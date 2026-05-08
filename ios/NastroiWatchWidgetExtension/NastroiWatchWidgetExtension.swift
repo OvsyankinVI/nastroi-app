@@ -12,7 +12,11 @@ struct Provider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> Void) {
         let entry = SimpleEntry(date: Date())
-        completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(60 * 15))))
+        let timeline = Timeline(
+            entries: [entry],
+            policy: .after(Date().addingTimeInterval(60 * 15))
+        )
+        completion(timeline)
     }
 }
 
@@ -25,19 +29,29 @@ struct NastroiWatchWidgetExtensionEntryView: View {
 
     var body: some View {
         ZStack {
+            // фон
             Circle()
-                .fill(Color.purple.opacity(0.35))
-                .blur(radius: 8)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color.purple.opacity(0.8),
+                            Color.pink.opacity(0.5)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
 
-            Circle()
-                .fill(Color.pink.opacity(0.22))
-                .blur(radius: 4)
-
-            Image("male_0_happy")
+            // аватар
+            Image(systemName: "figure.stand")
                 .resizable()
                 .scaledToFit()
-                .padding(5)
+                .padding(6)
+                .foregroundStyle(.white)
+            Circle()
+                .stroke(Color.white, lineWidth: 1)
         }
+        .widgetAccentable(false)
         .containerBackground(.black, for: .widget)
     }
 }
@@ -46,7 +60,10 @@ struct NastroiWatchWidgetExtension: Widget {
     let kind: String = "NastroiWatchWidgetExtension"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: Provider()) { entry in
+        StaticConfiguration(
+            kind: kind,
+            provider: Provider()
+        ) { entry in
             NastroiWatchWidgetExtensionEntryView(entry: entry)
         }
         .configurationDisplayName("Настрой")
