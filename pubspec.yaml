@@ -1,0 +1,38 @@
+name: nastroi_app
+description: "Настрой"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  shared_preferences: ^2.3.2
+  qr_flutter: ^4.1.0
+  reorderable_grid: ^1.0.13
+  app_links: ^7.0.0
+  home_widget: ^0.9.1
+  flutter_local_notifications: ^21.0.0
+  timezone: ^0.11.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/avatars/
+
+
+flutter_launcher_icons:
+  ios: true
+  android: true
+  image_path: "assets/icon/app_icon.png"
+  remove_alpha_ios: true
