@@ -13,6 +13,7 @@
 		219A7FB02FA9D05500E0182C /* NastroiWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 219A7F9D2FA9D05300E0182C /* NastroiWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		21C48BF12FADD24600CE8E22 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 219A7F9E2FA9D05300E0182C /* WidgetKit.framework */; };
 		21C48BF22FADD24600CE8E22 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 219A7FA02FA9D05300E0182C /* SwiftUI.framework */; };
+		21C490162FAE025700CE8E22 /* NastroiWatchWidgetExtensionExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 21C48BF02FADD24600CE8E22 /* NastroiWatchWidgetExtensionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		38C8AD327700052A889AE483 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4BDE34B7D3F319984EDB515 /* Pods_Runner.framework */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
@@ -58,6 +59,17 @@
 				219A7FB02FA9D05500E0182C /* NastroiWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		21C490152FAE021C00CE8E22 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				21C490162FAE025700CE8E22 /* NastroiWatchWidgetExtensionExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		9705A1C41CF9048500538489 /* Embed Frameworks */ = {
@@ -334,6 +346,7 @@
 				21EF0A8F2FAB3F98006A979B /* Sources */,
 				21EF0A902FAB3F98006A979B /* Frameworks */,
 				21EF0A912FAB3F98006A979B /* Resources */,
+				21C490152FAE021C00CE8E22 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
@@ -896,7 +909,7 @@
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.vladislav.NastroiWatchWidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vladislav.nastroi.watchkitapp.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -942,7 +955,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 1.0;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.vladislav.NastroiWatchWidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vladislav.nastroi.watchkitapp.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -986,7 +999,7 @@
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MARKETING_VERSION = 1.0;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.vladislav.NastroiWatchWidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.vladislav.nastroi.watchkitapp.widget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
