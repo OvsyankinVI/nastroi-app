@@ -1,5 +1,9 @@
 import Foundation
 import WatchConnectivity
+import WidgetKit
+
+private let appGroupId = "group.com.vlad.nastroi"
+private let peopleStorageKey = "watch_people"
 
 struct WatchPerson: Identifiable, Codable {
     let id: String
@@ -18,16 +22,23 @@ final class WatchPeopleStore: NSObject, ObservableObject, WCSessionDelegate {
 
     override init() {
         super.init()
-        loadCachedPeople()
+        loadSavedPeople()
         activateSession()
     }
 
-    private func loadCachedPeople() {
-        guard let jsonString = UserDefaults.standard.string(forKey: "watch_people") else {
+    private func loadSavedPeople() {
+        let groupDefaults = UserDefaults(suiteName: appGroupId)
+
+        let jsonString =
+            groupDefaults?.string(forKey: peopleStorageKey)
+            ?? UserDefaults.standard.string(forKey: peopleStorageKey)
+
+        guard let jsonString else {
+            print("No saved people found")
             return
         }
 
-        updatePeople(from: jsonString, shouldSave: false)
+        updatePeople(from: jsonString)
     }
 
     private func activateSession() {
@@ -48,7 +59,7 @@ final class WatchPeopleStore: NSObject, ObservableObject, WCSessionDelegate {
         print("Received application context")
 
         guard let peopleJson = applicationContext["people"] as? String else {
-            print("No people json found")
+            print("No people json found in application context")
             return
         }
 
@@ -69,22 +80,26 @@ final class WatchPeopleStore: NSObject, ObservableObject, WCSessionDelegate {
         updatePeople(from: peopleJson)
     }
 
-    private func updatePeople(from jsonString: String, shouldSave: Bool = true) {
-        if shouldSave {
-            UserDefaults.standard.set(jsonString, forKey: "watch_people")
-        }
-
+    private func updatePeople(from jsonString: String) {
         guard let data = jsonString.data(using: .utf8) else {
-            print("Failed to convert json string to data")
+            print("Failed converting json to data")
             return
         }
 
         do {
             let decoded = try JSONDecoder().decode([WatchPerson].self, from: data)
 
+            let groupDefaults = UserDefaults(suiteName: appGroupId)
+            groupDefaults?.set(jsonString, forKey: peopleStorageKey)
+            groupDefaults?.synchronize()
+
+            UserDefaults.standard.set(jsonString, forKey: peopleStorageKey)
+            UserDefaults.standard.synchronize()
+
             DispatchQueue.main.async {
                 self.people = decoded
                 print("Updated people on watch: \(decoded.count)")
+                WidgetCenter.shared.reloadAllTimelines()
             }
         } catch {
             print("JSON decode error: \(error)")
