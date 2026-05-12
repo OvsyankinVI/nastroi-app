@@ -258,7 +258,7 @@
   .realPhoneImage {
     width: 280px;
   }
-  
+
   .steps {
     padding-left: 20px;
     padding-right: 20px;
@@ -321,4 +321,120 @@
   box-shadow:
     0 50px 120px rgba(0,0,0,0.55),
     0 0 80px rgba(122,77,255,0.25);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  overflow-x: hidden;
+}
+
+.landing {
+  width: 100%;
+  max-width: 100vw;
+}
+
+@media (max-width: 768px) {
+  .hero {
+    min-height: auto;
+    padding: 56px 20px 72px;
+    display: flex;
+    flex-direction: column;
+    gap: 42px;
+    text-align: left;
+  }
+
+  .heroText {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .eyebrow {
+    font-size: 11px;
+    line-height: 1.5;
+    letter-spacing: 0.16em;
+  }
+
+  .hero h1 {
+    font-size: 44px;
+    line-height: 0.96;
+    letter-spacing: -0.055em;
+    max-width: 100%;
+    margin: 16px 0 20px;
+  }
+
+  .subtitle {
+    font-size: 18px;
+    line-height: 1.45;
+    max-width: 100%;
+  }
+
+  .heroButtons {
+    flex-direction: column;
+    width: 100%;
+    gap: 12px;
+  }
+
+  .primaryButton,
+  .secondaryButton {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .heroMockup {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  .realPhoneWrapper {
+    width: 245px;
+    max-width: 78vw;
+    margin: 0 auto;
+  }
+
+  .realPhoneImage {
+    width: 100%;
+    border-radius: 32px;
+    transform: rotate(-2deg);
+  }
+
+  .section {
+    padding: 72px 20px;
+  }
+
+  .section h2 {
+    font-size: 36px;
+    line-height: 1;
+    letter-spacing: -0.045em;
+  }
+
+  .section p {
+    font-size: 18px;
+    line-height: 1.45;
+  }
+
+  .steps {
+    padding: 32px 20px 72px;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .step {
+    min-height: auto;
+    padding: 24px;
+  }
+
+  .docsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .docTile {
+    padding: 24px;
+  }
 }

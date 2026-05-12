@@ -40,9 +40,15 @@ const config = {
     ],
   ],
 
-  themeConfig: {
-    navbar: {
-      title: 'Настрой',
+themeConfig: {
+  colorMode: {
+    defaultMode: 'dark',
+    disableSwitch: false,
+    respectPrefersColorScheme: false,
+  },
+
+  navbar: {
+    title: 'Настрой',
       items: [
         {
           to: '/',
