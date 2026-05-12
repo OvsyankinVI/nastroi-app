@@ -37,49 +37,29 @@
 ## Диаграмма компонентов
 
 ```mermaid
-flowchart TB
-  subgraph flutter [Flutter]
-    Home[HomeScreen]
-    Repo[PeopleRepository]
-    NS[NotificationService]
-    WS[WidgetService]
-    WSync[WatchSyncService]
-  end
-  subgraph prefs [(SharedPreferences)]
-    SP[people_storage_v1]
-  end
-  subgraph ag [App Group group.com.vlad.nastroi]
-    WK[widget_people]
-    WP[watch_people]
-    SEL[selected_widget_person_id]
-  end
-  subgraph ios [iOS Runner]
-    AD[AppDelegate]
-    WC[WCSession]
-    MC[MethodChannel nastroi_watch_sync]
-  end
-  subgraph ext_i [iPhone Widget Extension]
-    IW[NastroiWidget]
-  end
-  subgraph watch_app [watchOS App]
-    Store[WatchPeopleStore]
-  end
-  subgraph ext_w [watchOS Widget Extension]
-    WW[NastroiWatchWidgetExtension]
-  end
-  Home --> Repo
-  Repo --> SP
-  Home --> NS
-  Home --> WS
-  Home --> WSync
-  WS --> WK
-  IW --> WK
-  WSync --> MC --> AD --> WC
-  WC --> Store
-  Store --> WP
-  Store --> SEL
-  WW --> WP
-  WW --> SEL
+flowchart TD
+    subgraph FlutterApp[Flutter приложение]
+        Home[HomeScreen]
+        Repo[PeopleRepository]
+        QR[QR and Deep Links]
+    end
+
+    subgraph LocalData[Локальные данные]
+        Storage[SharedPreferences]
+    end
+
+    subgraph Platform[Платформенные компоненты]
+        Widget[Home Widget]
+        Watch[Apple Watch]
+        Notifications[Local Notifications]
+    end
+
+    Home --> Repo
+    Repo --> Storage
+    Home --> QR
+    Home --> Widget
+    Home --> Notifications
+    Widget --> Watch
 ```
 
 Другие экраны используют `PeopleRepository` и колбэки в `HomeScreen`, но **не** вызывают напрямую сервисы виджета, часов и уведомлений — только цепочка из `HomeScreen._persist()` / `_init()`.
