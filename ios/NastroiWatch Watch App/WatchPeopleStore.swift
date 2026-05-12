@@ -17,7 +17,6 @@ struct WatchPerson: Identifiable, Codable {
 }
 
 final class WatchPeopleStore: NSObject, ObservableObject, WCSessionDelegate {
-
     @Published var people: [WatchPerson] = []
 
     override init() {
@@ -33,19 +32,13 @@ final class WatchPeopleStore: NSObject, ObservableObject, WCSessionDelegate {
             groupDefaults?.string(forKey: peopleStorageKey)
             ?? UserDefaults.standard.string(forKey: peopleStorageKey)
 
-        guard let jsonString else {
-            print("No saved people found")
-            return
-        }
+        guard let jsonString else { return }
 
         updatePeople(from: jsonString)
     }
 
     private func activateSession() {
-        guard WCSession.isSupported() else {
-            print("WCSession not supported")
-            return
-        }
+        guard WCSession.isSupported() else { return }
 
         let session = WCSession.default
         session.delegate = self
@@ -54,12 +47,9 @@ final class WatchPeopleStore: NSObject, ObservableObject, WCSessionDelegate {
 
     func session(
         _ session: WCSession,
-        didReceiveApplicationContext applicationContext: [String : Any]
+        didReceiveApplicationContext applicationContext: [String: Any]
     ) {
-        print("Received application context")
-
         guard let peopleJson = applicationContext["people"] as? String else {
-            print("No people json found in application context")
             return
         }
 
@@ -68,12 +58,9 @@ final class WatchPeopleStore: NSObject, ObservableObject, WCSessionDelegate {
 
     func session(
         _ session: WCSession,
-        didReceiveUserInfo userInfo: [String : Any] = [:]
+        didReceiveUserInfo userInfo: [String: Any] = [:]
     ) {
-        print("Received user info")
-
         guard let peopleJson = userInfo["people"] as? String else {
-            print("No people json found in userInfo")
             return
         }
 
@@ -81,10 +68,7 @@ final class WatchPeopleStore: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     private func updatePeople(from jsonString: String) {
-        guard let data = jsonString.data(using: .utf8) else {
-            print("Failed converting json to data")
-            return
-        }
+        guard let data = jsonString.data(using: .utf8) else { return }
 
         do {
             let decoded = try JSONDecoder().decode([WatchPerson].self, from: data)
@@ -98,11 +82,10 @@ final class WatchPeopleStore: NSObject, ObservableObject, WCSessionDelegate {
 
             DispatchQueue.main.async {
                 self.people = decoded
-                print("Updated people on watch: \(decoded.count)")
                 WidgetCenter.shared.reloadAllTimelines()
             }
         } catch {
-            print("JSON decode error: \(error)")
+            // Intentionally ignored in release flow.
         }
     }
 
@@ -110,15 +93,7 @@ final class WatchPeopleStore: NSObject, ObservableObject, WCSessionDelegate {
         _ session: WCSession,
         activationDidCompleteWith activationState: WCSessionActivationState,
         error: Error?
-    ) {
-        if let error = error {
-            print("Watch session activation error: \(error.localizedDescription)")
-        } else {
-            print("Watch session activated")
-        }
-    }
+    ) {}
 
-    func sessionReachabilityDidChange(_ session: WCSession) {
-        print("Reachability changed: \(session.isReachable)")
-    }
+    func sessionReachabilityDidChange(_ session: WCSession) {}
 }

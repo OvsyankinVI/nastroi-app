@@ -7,6 +7,7 @@ private let widgetKind = "NastroiWatchWidgetExtension"
 
 struct ContentView: View {
     @EnvironmentObject var watchStore: WatchPeopleStore
+
     @State private var selectedWidgetPersonId: String? =
         UserDefaults(suiteName: appGroupId)?.string(forKey: selectedPersonKey)
         ?? UserDefaults.standard.string(forKey: selectedPersonKey)
@@ -15,8 +16,12 @@ struct ContentView: View {
         NavigationStack {
             if watchStore.people.isEmpty {
                 VStack(spacing: 12) {
-                    Text("😴").font(.system(size: 40))
-                    Text("Нет людей").font(.headline)
+                    Text("😴")
+                        .font(.system(size: 40))
+
+                    Text("Нет людей")
+                        .font(.headline)
+
                     Text("Открой iPhone приложение и добавь людей")
                         .font(.caption2)
                         .multilineTextAlignment(.center)
@@ -75,8 +80,6 @@ struct ContentView: View {
 
         WidgetCenter.shared.reloadTimelines(ofKind: widgetKind)
         WidgetCenter.shared.reloadAllTimelines()
-
-        print("Selected widget person id: \(person.id)")
     }
 }
 
@@ -115,7 +118,8 @@ struct PersonDetailView: View {
                         .font(.caption)
                         .foregroundColor(.gray)
 
-                    if let activeStage = person.activeStage, !activeStage.isEmpty {
+                    if let activeStage = person.activeStage,
+                       !activeStage.isEmpty {
                         Text(activeStage)
                             .font(.caption2)
                             .foregroundColor(.gray)
@@ -164,10 +168,14 @@ func parsedActions(_ values: [String]) -> [ParsedAction] {
 
 func parseAction(_ value: String) -> ParsedAction? {
     let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-    if trimmed.isEmpty { return nil }
+
+    if trimmed.isEmpty {
+        return nil
+    }
 
     if trimmed.hasPrefix("emoji::") {
         let parts = trimmed.components(separatedBy: "::")
+
         if parts.count >= 3 {
             return ParsedAction(
                 emoji: parts[1],
@@ -176,7 +184,10 @@ func parseAction(_ value: String) -> ParsedAction? {
         }
     }
 
-    return ParsedAction(emoji: "•", text: trimmed)
+    return ParsedAction(
+        emoji: "•",
+        text: trimmed
+    )
 }
 
 func moodLabel(_ mood: String) -> String {

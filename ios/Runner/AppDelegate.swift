@@ -21,27 +21,20 @@ import WatchConnectivity
       session.delegate = self
       session.activate()
       watchSession = session
-      print("Watch session activation requested")
     }
 
-      guard let registrar = self.registrar(
-        forPlugin: "NastroiWatchSyncPlugin"
-      ) else {
-        print("Flutter registrar not found")
-        return result
-      }
+    guard let registrar = self.registrar(
+      forPlugin: "NastroiWatchSyncPlugin"
+    ) else {
+      return result
+    }
 
-      let channel = FlutterMethodChannel(
-        name: "nastroi_watch_sync",
-        binaryMessenger: registrar.messenger()
-      )
+    let channel = FlutterMethodChannel(
+      name: "nastroi_watch_sync",
+      binaryMessenger: registrar.messenger()
+    )
 
-      channel.setMethodCallHandler { [weak self] (
-        call: FlutterMethodCall,
-        result: @escaping FlutterResult
-      ) in
-      print("Flutter channel call: \(call.method)")
-
+    channel.setMethodCallHandler { [weak self] call, result in
       guard call.method == "syncPeople" else {
         result(FlutterMethodNotImplemented)
         return
@@ -58,83 +51,48 @@ import WatchConnectivity
         return
       }
 
-      print("Received people json from Flutter")
       self?.syncPeopleToWatch(jsonString)
       result(nil)
     }
 
-    print("Watch sync channel registered successfully")
-
     return result
   }
 
-  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+  func didInitializeImplicitFlutterEngine(
+    _ engineBridge: FlutterImplicitEngineBridge
+  ) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
   }
 
-    private func syncPeopleToWatch(_ jsonString: String) {
-      pendingPeopleJson = jsonString
-      UserDefaults.standard.set(jsonString, forKey: "watch_people")
+  private func syncPeopleToWatch(_ jsonString: String) {
+    pendingPeopleJson = jsonString
+    sendPendingPeopleToWatch()
+  }
 
-      print("Sync people requested. Count chars: \(jsonString.count)")
-
-      sendPendingPeopleToWatch()
-    }
-
-    private func sendPendingPeopleToWatch() {
-      guard let jsonString = pendingPeopleJson else {
-    print("No pending people json")
-    return
-    }
-
-
-
-    guard let session = watchSession else {
-    print("No watch session")
-    return
-    }
-
-
-
-    print("Watch session state: (session.activationState.rawValue)")
-    print("Watch is paired: (session.isPaired)")
-    print("Watch app installed: (session.isWatchAppInstalled)")
-    print("Watch reachable: (session.isReachable)")
-
-
-
-    guard session.activationState == .activated else {
-    print("Watch session is not activated yet")
-    return
-    }
-
-
+  private func sendPendingPeopleToWatch() {
+    guard let jsonString = pendingPeopleJson else { return }
+    guard let session = watchSession else { return }
+    guard session.activationState == .activated else { return }
+    guard session.isWatchAppInstalled else { return }
 
     do {
-    try session.updateApplicationContext([
-    "people": jsonString])
+      try session.updateApplicationContext([
+        "people": jsonString
+      ])
 
-
-
-    session.transferUserInfo([
-    "people": jsonString])
-
-
-
-    print("Watch sync sent")
+      session.transferUserInfo([
+        "people": jsonString
+      ])
     } catch {
-    print("Watch sync error: (error)")
+      // Intentionally ignored in release flow.
     }
-    }
-    
-
+  }
 
   func session(
     _ session: WCSession,
     activationDidCompleteWith activationState: WCSessionActivationState,
     error: Error?
   ) {
-    print("Watch session activated: \(activationState.rawValue), error: \(String(describing: error))")
     sendPendingPeopleToWatch()
   }
 
