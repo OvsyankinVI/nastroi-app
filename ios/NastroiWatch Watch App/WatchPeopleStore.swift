@@ -1,4 +1,3 @@
-
 import Foundation
 import WatchConnectivity
 
@@ -17,73 +16,20 @@ final class WatchPeopleStore: NSObject, ObservableObject, WCSessionDelegate {
 
     @Published var people: [WatchPerson] = []
 
-    // MARK: - Mock data для симулятора / быстрых UI тестов
-    #if DEBUG
-    private let mockPeople: [WatchPerson] = [
-        WatchPerson(
-            id: "1",
-            name: "Аня",
-            mood: "happy",
-            gender: "female",
-            avatarVariant: 0,
-            activeStage: "Хочет общения",
-            helpfulActions: [
-                "Обнять",
-                "Спросить как дела",
-                "Провести время вместе"
-            ],
-            avoidActions: [
-                "Игнорировать",
-                "Критиковать"
-            ]
-        ),
-
-        WatchPerson(
-            id: "2",
-            name: "Макс",
-            mood: "tired",
-            gender: "male",
-            avatarVariant: 1,
-            activeStage: "Устал после работы",
-            helpfulActions: [
-                "Дать отдохнуть",
-                "Сделать чай"
-            ],
-            avoidActions: [
-                "Грузить задачами"
-            ]
-        ),
-
-        WatchPerson(
-            id: "3",
-            name: "Лиза",
-            mood: "sad",
-            gender: "female",
-            avatarVariant: 2,
-            activeStage: "Нуждается в поддержке",
-            helpfulActions: [
-                "Выслушать",
-                "Поддержать"
-            ],
-            avoidActions: [
-                "Обесценивать чувства"
-            ]
-        )
-    ]
-    #endif
-
     override init() {
         super.init()
-
-        #if DEBUG
-        // Для симулятора сразу показываем UI
-        self.people = mockPeople
-        #endif
-
+        loadCachedPeople()
         activateSession()
     }
 
-    // MARK: - Session setup
+    private func loadCachedPeople() {
+        guard let jsonString = UserDefaults.standard.string(forKey: "watch_people") else {
+            return
+        }
+
+        updatePeople(from: jsonString, shouldSave: false)
+    }
+
     private func activateSession() {
         guard WCSession.isSupported() else {
             print("WCSession not supported")
@@ -95,7 +41,6 @@ final class WatchPeopleStore: NSObject, ObservableObject, WCSessionDelegate {
         session.activate()
     }
 
-    // MARK: - Receive data from iPhone
     func session(
         _ session: WCSession,
         didReceiveApplicationContext applicationContext: [String : Any]
@@ -110,29 +55,41 @@ final class WatchPeopleStore: NSObject, ObservableObject, WCSessionDelegate {
         updatePeople(from: peopleJson)
     }
 
-    private func updatePeople(from jsonString: String) {
+    func session(
+        _ session: WCSession,
+        didReceiveUserInfo userInfo: [String : Any] = [:]
+    ) {
+        print("Received user info")
+
+        guard let peopleJson = userInfo["people"] as? String else {
+            print("No people json found in userInfo")
+            return
+        }
+
+        updatePeople(from: peopleJson)
+    }
+
+    private func updatePeople(from jsonString: String, shouldSave: Bool = true) {
+        if shouldSave {
+            UserDefaults.standard.set(jsonString, forKey: "watch_people")
+        }
+
         guard let data = jsonString.data(using: .utf8) else {
             print("Failed to convert json string to data")
             return
         }
 
         do {
-            let decoded = try JSONDecoder().decode(
-                [WatchPerson].self,
-                from: data
-            )
+            let decoded = try JSONDecoder().decode([WatchPerson].self, from: data)
 
             DispatchQueue.main.async {
                 self.people = decoded
                 print("Updated people on watch: \(decoded.count)")
             }
-
         } catch {
             print("JSON decode error: \(error)")
         }
     }
-
-    // MARK: - Required WCSessionDelegate methods
 
     func session(
         _ session: WCSession,

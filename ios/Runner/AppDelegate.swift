@@ -72,31 +72,62 @@ import WatchConnectivity
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
   }
 
-  private func syncPeopleToWatch(_ jsonString: String) {
-    pendingPeopleJson = jsonString
-    UserDefaults.standard.set(jsonString, forKey: "watch_people")
-    sendPendingPeopleToWatch()
-  }
+    private func syncPeopleToWatch(_ jsonString: String) {
+      pendingPeopleJson = jsonString
+      UserDefaults.standard.set(jsonString, forKey: "watch_people")
 
-  private func sendPendingPeopleToWatch() {
-    guard let jsonString = pendingPeopleJson else { return }
-    guard let session = watchSession else { return }
-    guard session.activationState == .activated else { return }
+      print("Sync people requested. Count chars: \(jsonString.count)")
+
+      sendPendingPeopleToWatch()
+    }
+
+    private func sendPendingPeopleToWatch() {
+      guard let jsonString = pendingPeopleJson else {
+    print("No pending people json")
+    return
+    }
+
+
+
+    guard let session = watchSession else {
+    print("No watch session")
+    return
+    }
+
+
+
+    print("Watch session state: (session.activationState.rawValue)")
+    print("Watch is paired: (session.isPaired)")
+    print("Watch app installed: (session.isWatchAppInstalled)")
+    print("Watch reachable: (session.isReachable)")
+
+
+
+    guard session.activationState == .activated else {
+    print("Watch session is not activated yet")
+    return
+    }
+
+
 
     do {
-      try session.updateApplicationContext([
-        "people": jsonString
-      ])
+    try session.updateApplicationContext([
+    "people": jsonString])
 
-      session.transferUserInfo([
-        "people": jsonString
-      ])
 
-      print("Watch sync sent")
+
+    session.transferUserInfo([
+    "people": jsonString])
+
+
+
+    print("Watch sync sent")
     } catch {
-      print("Watch sync error: \(error)")
+    print("Watch sync error: (error)")
     }
-  }
+    }
+    
+
 
   func session(
     _ session: WCSession,

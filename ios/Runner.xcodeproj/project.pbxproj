@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		210AF9332FB315AF00A7C4A4 /* NastroiWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 21EF0A932FAB3F98006A979B /* NastroiWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		219A7F9F2FA9D05300E0182C /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 219A7F9E2FA9D05300E0182C /* WidgetKit.framework */; };
 		219A7FA12FA9D05300E0182C /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 219A7FA02FA9D05300E0182C /* SwiftUI.framework */; };
 		219A7FB02FA9D05500E0182C /* NastroiWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 219A7F9D2FA9D05300E0182C /* NastroiWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -26,6 +27,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		210AF9342FB316C600A7C4A4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 21EF0A922FAB3F98006A979B;
+			remoteInfo = "NastroiWatch Watch App";
+		};
 		21EF0AA32FAB3F99006A979B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
@@ -50,6 +58,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		210AF8592FB3112B00A7C4A4 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 12;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				210AF9332FB315AF00A7C4A4 /* NastroiWatch Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		219A7FB12FA9D05500E0182C /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -432,12 +451,14 @@
 				97C146EC1CF9000F007C117D /* Resources */,
 				9705A1C41CF9048500538489 /* Embed Frameworks */,
 				219A7FB12FA9D05500E0182C /* Embed Foundation Extensions */,
+				210AF8592FB3112B00A7C4A4 /* Embed Watch Content */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				989D1FACC90F24DBDD9B7E23 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				210AF9352FB316C600A7C4A4 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			productName = Runner;
@@ -718,6 +739,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		210AF9352FB316C600A7C4A4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 21EF0A922FAB3F98006A979B /* NastroiWatch Watch App */;
+			targetProxy = 210AF9342FB316C600A7C4A4 /* PBXContainerItemProxy */;
+		};
 		21EF0AA42FAB3F99006A979B /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 21EF0A922FAB3F98006A979B /* NastroiWatch Watch App */;
@@ -1030,7 +1056,7 @@
 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 1.0.0;
 				DEVELOPMENT_ASSET_PATHS = "\"NastroiWatch Watch App/Preview Content\"";
 				DEVELOPMENT_TEAM = U2AZKTQMTY;
 				ENABLE_PREVIEWS = YES;
@@ -1045,7 +1071,7 @@
 					"@executable_path/Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vladislav.nastroi.watchkitapp;
@@ -1074,7 +1100,7 @@
 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 1.0.0;
 				DEVELOPMENT_ASSET_PATHS = "\"NastroiWatch Watch App/Preview Content\"";
 				DEVELOPMENT_TEAM = U2AZKTQMTY;
 				ENABLE_PREVIEWS = YES;
@@ -1089,7 +1115,7 @@
 					"@executable_path/Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.0;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vladislav.nastroi.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1116,7 +1142,7 @@
 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 1.0.0;
 				DEVELOPMENT_ASSET_PATHS = "\"NastroiWatch Watch App/Preview Content\"";
 				DEVELOPMENT_TEAM = U2AZKTQMTY;
 				ENABLE_PREVIEWS = YES;
@@ -1131,7 +1157,7 @@
 					"@executable_path/Frameworks",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.0;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vladislav.nastroi.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
