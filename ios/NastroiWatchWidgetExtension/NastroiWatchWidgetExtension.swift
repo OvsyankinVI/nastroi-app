@@ -12,11 +12,13 @@ struct Provider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> Void) {
         let entry = SimpleEntry(date: Date())
-        let timeline = Timeline(
-            entries: [entry],
-            policy: .after(Date().addingTimeInterval(60 * 15))
+
+        completion(
+            Timeline(
+                entries: [entry],
+                policy: .after(Date().addingTimeInterval(900))
+            )
         )
-        completion(timeline)
     }
 }
 
@@ -29,29 +31,25 @@ struct NastroiWatchWidgetExtensionEntryView: View {
 
     var body: some View {
         ZStack {
-            // фон
             Circle()
                 .fill(
                     LinearGradient(
-                        colors: [
-                            Color.purple.opacity(0.8),
-                            Color.pink.opacity(0.5)
-                        ],
+                        colors: [.purple, .pink, .orange],
                         startPoint: .top,
                         endPoint: .bottom
                     )
                 )
 
-            // аватар
-            Image(systemName: "figure.stand")
+            Circle()
+                .stroke(.white, lineWidth: 2)
+
+            Image("male_0_happy_complication", bundle: .main)
+                .renderingMode(.original)
                 .resizable()
                 .scaledToFit()
-                .padding(6)
-                .foregroundStyle(.white)
-            Circle()
-                .stroke(Color.white, lineWidth: 1)
+                .padding(2)
         }
-        .widgetAccentable(false)
+        .frame(width: 42, height: 42)
         .containerBackground(.black, for: .widget)
     }
 }
@@ -67,11 +65,9 @@ struct NastroiWatchWidgetExtension: Widget {
             NastroiWatchWidgetExtensionEntryView(entry: entry)
         }
         .configurationDisplayName("Настрой")
-        .description("Человечек с текущим настроем.")
+        .description("Текущее состояние персонажа")
         .supportedFamilies([
-            .accessoryCircular,
-            .accessoryCorner,
-            .accessoryRectangular
+            .accessoryCircular
         ])
     }
 }
