@@ -23,6 +23,12 @@ export default function Home() {
               <Link className="primaryButton" to="/docs/user/overview">
                 Попробовать
               </Link>
+              <Link
+                className="primaryButton"
+                to="/demo"
+              >
+                Попробовать демо
+              </Link>
               <Link className="secondaryButton" to="/docs/technical/architecture">
                 Как это работает
               </Link>

@@ -62,6 +62,11 @@ navbar: {
           label: 'Пользовательская документация',
           position: 'left',
         },
+	{
+	  to: '/demo',
+	  label: 'Демо',
+	  position: 'left',
+	},
         {
           to: '/docs/technical/architecture',
           label: 'Техническая документация',
