@@ -54,3 +54,12 @@
 .markdown h2 {
   margin-top: 48px;
 }
+
+.navbar__title {
+  font-weight: 800;
+}
+
+.navbar__logo img {
+  filter: none !important;
+  opacity: 1 !important;
+}

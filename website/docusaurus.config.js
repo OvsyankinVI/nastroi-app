@@ -1,7 +1,7 @@
 const config = {
   title: 'Настрой',
   tagline: 'Покажи близким, в каком ты сейчас настрое',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/logo.png',
 
   url: 'https://ovsyankinvi.github.io',
   baseUrl: '/nastroi-app/',
@@ -47,8 +47,13 @@ themeConfig: {
     respectPrefersColorScheme: false,
   },
 
-  navbar: {
-    title: 'Настрой',
+
+navbar: {
+  title: 'Настрой',
+  logo: {
+    alt: 'Настрой',
+    src: 'img/logo.png',
+  },
       items: [
         {
           to: '/',
