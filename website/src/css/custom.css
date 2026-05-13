@@ -63,3 +63,71 @@
   filter: none !important;
   opacity: 1 !important;
 }
+
+/* Mobile navbar/sidebar fix */
+
+.navbar-sidebar {
+  background: #101016 !important;
+  color: #ffffff !important;
+}
+
+.navbar-sidebar__brand {
+  background: #101016 !important;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.navbar-sidebar__items {
+  padding: 20px !important;
+}
+
+.navbar-sidebar .menu__list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.navbar-sidebar .menu__link {
+  color: #ffffff !important;
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  border-radius: 16px;
+  padding: 14px 16px !important;
+}
+
+.navbar-sidebar .menu__link:hover,
+.navbar-sidebar .menu__link--active {
+  background: rgba(255,255,255,0.08) !important;
+  color: #c8a8ff !important;
+}
+
+.navbar-sidebar__close {
+  color: #ffffff !important;
+}
+
+@media (max-width: 996px) {
+  .navbar__items--right {
+    display: none !important;
+  }
+
+  .navbar-sidebar {
+    max-width: 100vw !important;
+  }
+
+  body {
+    overflow-x: hidden !important;
+  }
+}
+/* Hide mobile burger menu completely */
+@media (max-width: 996px) {
+  .navbar__toggle {
+    display: none !important;
+  }
+
+  .navbar-sidebar {
+    display: none !important;
+  }
+
+  .navbar__items {
+    justify-content: flex-start !important;
+  }
+}
