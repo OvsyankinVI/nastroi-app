@@ -11,6 +11,8 @@ import '../utils/person_link.dart';
 import '../widgets/person_avatar.dart';
 import 'edit_person_screen.dart' as edit_screen;
 
+import '../services/auth_service.dart';
+
 enum ReactionType {
   warm,
   communication,
@@ -67,6 +69,177 @@ class _PersonScreenState extends State<PersonScreen>
   double _reactionVerticalOffset = 0.0;
   double _shakeX = 0.0;
 
+  bool isFabMenuOpen = false;
+
+    void _toggleFabMenu() {
+    setState(() {
+      isFabMenuOpen = !isFabMenuOpen;
+    });
+  }
+
+  void _closeFabMenu() {
+    if (!isFabMenuOpen) return;
+    setState(() => isFabMenuOpen = false);
+  }
+
+  Widget _buildMiniActionButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    required String heroTag,
+  }) {
+    return SizedBox(
+      width: 56,
+      height: 56,
+      child: FloatingActionButton(
+        heroTag: heroTag,
+        mini: true,
+        backgroundColor: AppColors.surface(context),
+        elevation: 0,
+        onPressed: onTap,
+        child: Icon(icon, color: AppColors.primaryText(context)),
+      ),
+    );
+  }
+
+Widget _buildFabMenu() {
+  final actions = <Widget>[];
+
+  if (widget.isEditable) {
+    actions.add(
+      _buildMiniActionButton(
+        heroTag: 'person_edit_action',
+        icon: Icons.edit_outlined,
+        onTap: () {
+          _closeFabMenu();
+          _openEditScreen();
+        },
+      ),
+    );
+  }
+
+  actions.add(
+    _buildMiniActionButton(
+      heroTag: 'person_share_action',
+      icon: Icons.share,
+      onTap: () {
+        _closeFabMenu();
+        _showShareDialog();
+      },
+    ),
+  );
+
+  if (widget.onPersonDeleted != null) {
+    actions.add(
+      _buildMiniActionButton(
+        heroTag: 'person_delete_action',
+        icon: Icons.delete_outline,
+        onTap: () {
+          _closeFabMenu();
+          _confirmDelete();
+        },
+      ),
+    );
+  }
+
+  if (widget.isMyProfile) {
+    actions.add(
+      _buildMiniActionButton(
+        heroTag: 'person_logout_action',
+        icon: Icons.logout_rounded,
+        onTap: () {
+          _closeFabMenu();
+          _confirmLogout();
+        },
+      ),
+    );
+  }
+
+  const radius = 78.0;
+  const startAngle = -90.0;
+  const endAngle = -180.0;
+
+  return SizedBox(
+    width: 190,
+    height: 190,
+    child: Stack(
+      alignment: Alignment.bottomRight,
+      children: [
+        for (int i = 0; i < actions.length; i++)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            right: isFabMenuOpen
+                ? _fabOffsetX(
+                    index: i,
+                    count: actions.length,
+                    radius: radius,
+                    startAngle: startAngle,
+                    endAngle: endAngle,
+                  )
+                : 0,
+            bottom: isFabMenuOpen
+                ? _fabOffsetY(
+                    index: i,
+                    count: actions.length,
+                    radius: radius,
+                    startAngle: startAngle,
+                    endAngle: endAngle,
+                  )
+                : 0,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 140),
+              opacity: isFabMenuOpen ? 1 : 0,
+              child: IgnorePointer(
+                ignoring: !isFabMenuOpen,
+                child: actions[i],
+              ),
+            ),
+          ),
+        FloatingActionButton(
+          heroTag: 'person_main_actions',
+          backgroundColor: AppColors.chip(context),
+          elevation: 0,
+          onPressed: _toggleFabMenu,
+          child: Icon(
+            isFabMenuOpen ? Icons.close : Icons.add,
+            color: AppColors.primaryText(context),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+double _fabOffsetX({
+  required int index,
+  required int count,
+  required double radius,
+  required double startAngle,
+  required double endAngle,
+}) {
+  if (count == 1) return 0;
+
+  final angle = startAngle + (endAngle - startAngle) * (index / (count - 1));
+  final radians = angle * math.pi / 180;
+
+  return -math.cos(radians) * radius;
+}
+
+  double _fabOffsetY({
+    required int index,
+    required int count,
+    required double radius,
+    required double startAngle,
+    required double endAngle,
+  }) {
+    if (count == 1) return radius;
+
+    final angle = startAngle + (endAngle - startAngle) * (index / (count - 1));
+    final radians = angle * math.pi / 180;
+
+    return -math.sin(radians) * radius;
+  }
+
   Color? _reactionOverlayColor;
   String? _activeRecommendationKey;
 
@@ -74,6 +247,47 @@ class _PersonScreenState extends State<PersonScreen>
   late final AnimationController _shakeController;
 
   List<_FlyingReactionEmoji> _flyingEmojis = [];
+
+Future<void> _confirmLogout() async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        backgroundColor: AppColors.card(context),
+        title: Text(
+          'Выйти из аккаунта?',
+          style: TextStyle(
+            color: AppColors.primaryText(context),
+          ),
+        ),
+        content: Text(
+          'Ты точно хочешь выйти?',
+          style: TextStyle(
+            color: AppColors.secondaryText(context),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Ок'),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (confirmed == true) {
+    await AuthService.signOut();
+
+    if (!mounted) return;
+
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+}
 
   @override
   void initState() {
@@ -896,6 +1110,7 @@ WidgetsBinding.instance.addPostFrameCallback((_) {
 
     return Scaffold(
       backgroundColor: backgroundColor,
+      floatingActionButton: _buildFabMenu(),
       appBar: AppBar(
         backgroundColor: backgroundColor,
         elevation: 0,
@@ -906,25 +1121,7 @@ WidgetsBinding.instance.addPostFrameCallback((_) {
             fontWeight: FontWeight.w600,
           ),
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Поделиться',
-            onPressed: _showShareDialog,
-            icon: Icon(Icons.share, color: iconColor),
-          ),
-          if (widget.onPersonDeleted != null)
-            IconButton(
-              tooltip: 'Удалить из списка',
-              onPressed: _confirmDelete,
-              icon: Icon(Icons.delete_outline, color: iconColor),
-            ),
-          if (widget.isEditable)
-            IconButton(
-              tooltip: 'Редактировать',
-              onPressed: _openEditScreen,
-              icon: Icon(Icons.edit_outlined, color: iconColor),
-            ),
-        ],
+        actions: const [],
       ),
       body: AnimatedBuilder(
         animation: Listenable.merge([_floatController, _shakeController]),
@@ -1140,3 +1337,4 @@ class _RecommendationBubble extends StatelessWidget {
     );
   }
 }
+

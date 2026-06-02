@@ -54,30 +54,23 @@ navbar: {
     alt: 'Настрой',
     src: 'img/logo.png',
   },
-      items: [
-        {
-          to: '/',
-          label: 'Главная',
-          to: '/docs/user/overview',
-          label: 'Пользовательская документация',
-          position: 'left',
-        },
-	{
-	  to: '/demo',
-	  label: 'Демо',
-	  position: 'left',
-	},
-        {
-          to: '/docs/technical/architecture',
-          label: 'Техническая документация',
-          position: 'left',
-        },
-        {
-          href: 'https://github.com/OvsyankinVI/nastroi-app',
-          label: 'GitHub',
-          position: 'right',
-        },
-      ],
+	items: [
+	  {
+	    to: '/',
+	    label: 'Главная',
+	    position: 'left',
+	  },
+	  {
+	    to: '/docs/user/overview',
+	    label: 'Пользовательская документация',
+	    position: 'left',
+	  },
+	  {
+	    to: '/docs/technical/architecture',
+	    label: 'Техническая документация',
+	    position: 'left',
+	  },
+	],
     },
   },
 };

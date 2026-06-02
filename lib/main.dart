@@ -1,8 +1,6 @@
 import 'dart:async';
-
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
-
 import 'app_theme_controller.dart';
 import 'screens/home_screen.dart';
 import 'screens/link_person_preview_screen.dart';
@@ -11,13 +9,19 @@ import 'data/people_repository.dart';
 import 'screens/person_screen.dart';
 import 'models/person.dart';
 import 'services/notification_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'supabase_config.dart';
+import 'widgets/auth_gate.dart';
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await NotificationService.initialize();
+  await Supabase.initialize(
+    url: SupabaseConfig.url,
+    anonKey: SupabaseConfig.anonKey,
+  );
 
   runApp(const NastroiApp());
 }
@@ -214,7 +218,7 @@ class _NastroiAppState extends State<NastroiApp> {
           themeMode: themeMode,
           theme: _lightTheme(),
           darkTheme: _darkTheme(),
-          home: const HomeScreen(),
+          home: const AuthGate(),
         );
       },
     );
