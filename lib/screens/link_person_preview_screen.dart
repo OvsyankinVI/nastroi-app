@@ -5,6 +5,10 @@ import '../data/people_repository.dart';
 import '../models/person.dart';
 import 'person_screen.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart'; 
+
+import '../services/remote_friends_service.dart';
+
 class LinkPersonPreviewScreen extends StatefulWidget {
   final Person personFromLink;
 
@@ -19,7 +23,7 @@ class LinkPersonPreviewScreen extends StatefulWidget {
 }
 
 class _LinkPersonPreviewScreenState extends State<LinkPersonPreviewScreen> {
-  final PeopleRepository _repository = PeopleRepository();
+  late final PeopleRepository _repository;
 
   bool _isLoading = true;
   Person? _existingPerson;
@@ -27,6 +31,13 @@ class _LinkPersonPreviewScreenState extends State<LinkPersonPreviewScreen> {
   @override
   void initState() {
     super.initState();
+
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      throw StateError('User is not authenticated');
+    }
+
+    _repository = PeopleRepository(userId: user.id);
     _loadExistingPerson();
   }
 
@@ -49,11 +60,16 @@ class _LinkPersonPreviewScreenState extends State<LinkPersonPreviewScreen> {
     });
   }
 
-  Future<void> _addPerson() async {
+Future<void> _addPerson() async {
+  try {
+    await RemoteFriendsService.addFriendByPublicId(
+      widget.personFromLink.publicId,
+    );
+
     final people = await _repository.loadPeople();
 
     final alreadyExists = people.any(
-      (p) => p.publicId == widget.personFromLink.publicId,
+      (person) => person.publicId == widget.personFromLink.publicId,
     );
 
     if (!alreadyExists) {
@@ -66,7 +82,32 @@ class _LinkPersonPreviewScreenState extends State<LinkPersonPreviewScreen> {
     setState(() {
       _existingPerson = widget.personFromLink;
     });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Человек добавлен')),
+    );
+  } catch (error) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(_friendErrorMessage(error))),
+    );
   }
+}
+
+String _friendErrorMessage(Object error) {
+  final text = error.toString().toLowerCase();
+
+  if (text.contains('самого себя')) {
+    return 'Нельзя добавить самого себя';
+  }
+
+  if (text.contains('не найден')) {
+    return 'Профиль не найден';
+  }
+
+  return 'Не удалось добавить человека';
+}
 
   Color _glowColor(MoodType mood) {
     switch (mood) {

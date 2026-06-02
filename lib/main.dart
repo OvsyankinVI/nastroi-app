@@ -71,7 +71,10 @@ class _NastroiAppState extends State<NastroiApp> {
       final publicId = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : null;
       if (publicId == null) return;
 
-      final repository = PeopleRepository();
+      final user = Supabase.instance.client.auth.currentUser;
+        if (user == null) return;
+
+        final repository = PeopleRepository(userId: user.id);
       final people = await repository.loadPeople();
 
       Person? person;

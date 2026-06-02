@@ -6,13 +6,24 @@ import '../app_theme_controller.dart';
 import '../data/people_repository.dart';
 import '../models/person.dart';
 import '../widgets/person_avatar.dart';
+
 import 'about_screen.dart';
 import 'create_person_screen.dart';
 import 'import_person_screen.dart';
 import 'person_screen.dart';
+
 import '../services/widget_service.dart';
 import '../services/notification_service.dart';
 import '../services/watch_sync_service.dart';
+import '../services/remote_people_service.dart';
+
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../services/remote_friends_service.dart';
+
+import '../services/remote_friend_requests_service.dart';
+
+import '../services/realtime_people_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -40,30 +51,182 @@ class _HomeGridConfig {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final repository = PeopleRepository();
+  late final String userId;
+  late final PeopleRepository repository;
+  
+String? _requestAvatarAsset(Person person) {
+    if (person.sourceType == SourceType.friendRequestIncoming) {
+      return 'assets/images/friend_requests/request_incoming.png';
+    }
+
+    if (person.sourceType == SourceType.friendRequestPending) {
+      return 'assets/images/friend_requests/request_pending.png';
+    }
+
+    return null;
+  }
+
+  RealtimeChannel? _peopleRealtimeChannel;
+  RealtimeChannel? _friendRequestsRealtimeChannel;
+  RealtimeChannel? _friendLinksRealtimeChannel;
 
   List<Person> people = [];
+  List<RemoteFriendRequest> _latestFriendRequests = [];
   bool isLoading = true;
   String searchQuery = '';
   bool isFabMenuOpen = false;
   bool isHintDismissed = false;
+List<Person> _requestsAsPeople(List<RemoteFriendRequest> requests) {
+  return requests.map((request) {
+    return Person(
+      id: 'request_${request.id}',
+      publicId: request.otherPublicId,
+      name: request.otherName,
+      gender: GenderType.male,
+      avatarVariant: 0,
+      mood: MoodType.calm,
+      helpfulActions: const [],
+      avoidActions: const [],
+      relationType: RelationType.other,
+      sourceType: request.isIncoming
+          ? SourceType.friendRequestIncoming
+          : SourceType.friendRequestPending,
+    );
+  }).toList();
+}
+
+RemoteFriendRequest? _requestForPerson(Person person) {
+  final requestId = person.id.replaceFirst('request_', '');
+
+  for (final request in _latestFriendRequests) {
+    if (request.id == requestId) return request;
+  }
+
+  return null;
+}
+
 
   @override
   void initState() {
     super.initState();
+
+    userId = Supabase.instance.client.auth.currentUser!.id;
+    repository = PeopleRepository(userId: userId);
+
     _init();
+    _startRealtimeSync();
   }
+
+@override
+void dispose() {
+  final peopleChannel = _peopleRealtimeChannel;
+  if (peopleChannel != null) {
+    RealtimePeopleService.dispose(peopleChannel);
+  }
+
+  final requestsChannel = _friendRequestsRealtimeChannel;
+  if (requestsChannel != null) {
+    RealtimePeopleService.dispose(requestsChannel);
+  }
+
+  final linksChannel = _friendLinksRealtimeChannel;
+  if (linksChannel != null) {
+    RealtimePeopleService.dispose(linksChannel);
+  }
+
+  super.dispose();
+}
+
+void _startRealtimeSync() {
+  _peopleRealtimeChannel = RealtimePeopleService.subscribeToPeople(
+    onPersonChanged: (publicId) async {
+      final hasThisPerson = people.any(
+        (person) => person.publicId == publicId,
+      );
+
+      if (!hasThisPerson) return;
+
+      await _refreshRemoteFriends();
+    },
+  );
+
+  _friendRequestsRealtimeChannel =
+      RealtimePeopleService.subscribeToFriendRequests(
+    userId: userId,
+    onRequestsChanged: () async {
+      await _refreshFriendRequests();
+    },
+  );
+
+  _friendLinksRealtimeChannel = RealtimePeopleService.subscribeToFriendLinks(
+    userId: userId,
+    onFriendLinksChanged: () async {
+      await _refreshRemoteFriends();
+      await _refreshFriendRequests();
+    },
+  );
+}
+
+Future<void> _refreshRemoteFriends() async {
+  final synced = await _syncFromRemoteOnLaunch(people);
+  final normalized = _applyDailyStateToPeople(synced);
+  final requests = await RemoteFriendRequestsService.loadMyRequests();
+
+  if (!mounted) return;
+
+  setState(() {
+    _latestFriendRequests = requests;
+    people = [
+      ...normalized,
+      ..._requestsAsPeople(requests),
+    ];
+  });
+
+  await repository.savePeople(normalized);
+  await WidgetService.updatePeople(normalized);
+  await WatchSyncService.updatePeople(normalized);
+  await NotificationService.rescheduleCycleNotifications(normalized);
+}
+
+Future<void> _refreshFriendRequests() async {
+  final requests = await RemoteFriendRequestsService.loadMyRequests();
+
+  if (!mounted) return;
+
+  setState(() {
+    _latestFriendRequests = requests;
+    people = [
+      ...people.where(
+        (person) =>
+            person.sourceType != SourceType.friendRequestIncoming &&
+            person.sourceType != SourceType.friendRequestPending,
+      ),
+      ..._requestsAsPeople(requests),
+    ];
+  });
+}
 
   Future<void> _init() async {
     final loaded = await repository.loadPeople();
-    final normalized = _applyDailyStateToPeople(loaded);
+    final synced = await _syncFromRemoteOnLaunch(loaded);
+    final normalized = _applyDailyStateToPeople(synced);
 
-    setState(() {
-      people = normalized;
-      isLoading = false;
-    });
+final requests = await RemoteFriendRequestsService.loadMyRequests();
+
+setState(() {
+  _latestFriendRequests = requests;
+  people = [
+    ...normalized,
+    ..._requestsAsPeople(requests),
+  ];
+  isLoading = false;
+});
 
     await repository.savePeople(normalized);
+    final me = normalized.where((p) => p.id == 'me').firstOrNull;
+      if (me != null) {
+        await RemotePeopleService.upsertMyPerson(me);
+      }
     await WidgetService.updatePeople(normalized);
     await WatchSyncService.updatePeople(normalized);
     await NotificationService.rescheduleCycleNotifications(normalized);
@@ -76,6 +239,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
 Future<void> _persist() async {
   await repository.savePeople(people);
+  Person? me;
+    for (final person in people) {
+      if (person.id == 'me') {
+        me = person;
+        break;
+      }
+    }
+
+    if (me != null) {
+      await RemotePeopleService.upsertMyPerson(me);
+    }
   await WidgetService.updatePeople(people);
   await WatchSyncService.updatePeople(people);
   await NotificationService.rescheduleCycleNotifications(people);
@@ -103,13 +277,49 @@ Future<void> _persist() async {
     await _persist();
   }
 
-  Future<void> _deletePerson(String personId) async {
-    setState(() {
-      people.removeWhere((p) => p.id == personId);
-    });
+Future<List<Person>> _syncFromRemoteOnLaunch(List<Person> localPeople) async {
+  localPeople = localPeople
+      .where(
+        (person) =>
+            person.sourceType != SourceType.friendRequestIncoming &&
+            person.sourceType != SourceType.friendRequestPending,
+      )
+      .toList();
 
-    await _persist();
+  final remoteMe = await RemotePeopleService.loadMyRemotePerson();
+  final remoteFriends = await RemotePeopleService.loadMyRemoteFriends();
+
+  final localMe = localPeople.where((person) => person.id == 'me').toList();
+  final me = remoteMe ?? (localMe.isNotEmpty ? localMe.first : null);
+
+  final localFriends = localPeople.where((person) => person.id != 'me').toList();
+
+  final remoteFriendIds = remoteFriends.map((person) => person.publicId).toSet();
+
+  final localOnlyFriends = localFriends
+      .where((person) => !remoteFriendIds.contains(person.publicId))
+      .toList();
+
+  return [
+    if (me != null) me,
+    ...remoteFriends,
+    ...localOnlyFriends,
+  ];
+}
+
+Future<void> _deletePerson(String personId) async {
+  final person = people.firstWhere((p) => p.id == personId);
+
+  if (person.sourceType == SourceType.imported) {
+    await RemoteFriendsService.removeFriendByPublicId(person.publicId);
   }
+
+  setState(() {
+    people.removeWhere((p) => p.id == personId);
+  });
+
+  await _persist();
+}
 
   Person? _me() {
     try {
@@ -194,25 +404,105 @@ Future<void> _persist() async {
     }
   }
 
-  Future<void> _openImportPerson() async {
-    final imported = await Navigator.push<Person>(
-      context,
-      MaterialPageRoute(builder: (_) => const ImportPersonScreen()),
-    );
+String _friendImportErrorMessage(Object error) {
+  final text = error.toString().toLowerCase();
 
-    if (imported == null) return;
-
-    final alreadyExists = people.any((p) => p.publicId == imported.publicId);
-    if (alreadyExists) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Человек с таким кодом уже есть в списке')),
-      );
-      return;
-    }
-
-    await _addPerson(imported);
+  if (text.contains('самого себя')) {
+    return 'Нельзя добавить самого себя';
   }
+
+  if (text.contains('не найден')) {
+    return 'Профиль не найден';
+  }
+
+  return 'Не удалось добавить человека';
+}
+
+Future<List<Person>> _mergeRemoteFriends(List<Person> localPeople) async {
+  final remoteFriends = await RemotePeopleService.loadMyRemoteFriends();
+
+  if (remoteFriends.isEmpty) return localPeople;
+
+  final me = localPeople.where((p) => p.id == 'me').toList();
+  final localFriends = localPeople.where((p) => p.id != 'me').toList();
+
+  final remoteIds = remoteFriends.map((p) => p.publicId).toSet();
+
+  final localOnlyFriends = localFriends
+      .where((p) => !remoteIds.contains(p.publicId))
+      .toList();
+
+  return [
+    ...me,
+    ...remoteFriends,
+    ...localOnlyFriends,
+  ];
+}
+
+Future<void> _openImportPerson() async {
+  final imported = await Navigator.push<Person>(
+    context,
+    MaterialPageRoute(builder: (_) => const ImportPersonScreen()),
+  );
+
+  if (imported == null) return;
+
+  final alreadyExists = people.any((p) => p.publicId == imported.publicId);
+  if (alreadyExists) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Человек с таким кодом уже есть в списке')),
+    );
+    return;
+  }
+
+  try {
+    await RemoteFriendRequestsService.createRequestByPublicId(imported.publicId);
+  } catch (error) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error.toString())),
+    );
+    return;
+  }
+
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Заявка отправлена')),
+  );
+
+  await _refreshFriendRequests();
+}
+
+Future<void> _acceptRequest(RemoteFriendRequest request) async {
+  try {
+    await RemoteFriendRequestsService.acceptRequest(request.id);
+
+    await _refreshRemoteFriends();
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Человек добавлен')),
+    );
+  } catch (error) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error.toString())),
+    );
+  }
+}
+
+Future<void> _declineRequest(RemoteFriendRequest request) async {
+  await RemoteFriendRequestsService.declineRequest(request.id);
+  await _refreshFriendRequests();
+}
+
+Future<void> _cancelRequest(RemoteFriendRequest request) async {
+  await RemoteFriendRequestsService.cancelRequest(request.id);
+  await _refreshFriendRequests();
+}
 
   Future<void> _openAddMenu() async {
     await showModalBottomSheet(
@@ -593,6 +883,31 @@ Future<void> _persist() async {
 
     return GestureDetector(
       onTap: () {
+        if (person.sourceType == SourceType.friendRequestIncoming ||
+          person.sourceType == SourceType.friendRequestPending) {
+        final request = _requestForPerson(person);
+        if (request == null) return;
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PersonScreen(
+              person: person,
+              friendRequest: request,
+              onPersonUpdated: (_) {},
+              isEditable: false,
+              isMyProfile: false,
+              onPersonDeleted: null,
+              onAcceptRequest: _acceptRequest,
+              onDeclineRequest: _declineRequest,
+              onCancelRequest: _cancelRequest,
+              onTogglePin: null,
+            ),
+          ),
+        );
+
+        return;
+      }
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -616,6 +931,7 @@ Future<void> _persist() async {
                 gender: person.gender,
                 avatarVariant: person.avatarVariant,
                 size: avatarSize,
+                customAsset: _requestAvatarAsset(person),
               ),
             ),
           ),

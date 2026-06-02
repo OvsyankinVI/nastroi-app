@@ -10,6 +10,7 @@ class PersonAvatar extends StatelessWidget {
   final bool isMyProfile;
   final GenderType gender;
   final int avatarVariant;
+  final String? customAsset;
 
   const PersonAvatar({
     super.key,
@@ -18,6 +19,7 @@ class PersonAvatar extends StatelessWidget {
     required this.avatarVariant,
     this.size = 72,
     this.isMyProfile = false,
+    this.customAsset,
   });
 
   Color _backgroundColor(MoodType mood) {
@@ -105,33 +107,42 @@ class PersonAvatar extends StatelessWidget {
     }
   }
 
-  Widget _buildAvatarFigure() {
+Widget _buildAvatarFigure() {
+  if (customAsset != null) {
     return Image.asset(
-      _primaryAssetPath(),
-      width: size * 0.88,
-      height: size * 0.88,
+      customAsset!,
+      width: size * 0.9,
+      height: size * 0.9,
       fit: BoxFit.contain,
-      errorBuilder: (_, __, ___) {
-        return Image.asset(
-          _secondaryAssetPath(),
-          width: size * 0.88,
-          height: size * 0.88,
-          fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) {
-            return _AvatarFigure(
-              mood: mood,
-              size: size,
-              bodyColor: Colors.white,
-              bodyTilt: _bodyTilt(mood),
-              headTilt: _headTilt(mood),
-              gender: gender,
-              avatarVariant: avatarVariant,
-            );
-          },
-        );
-      },
     );
   }
+
+  return Image.asset(
+    _primaryAssetPath(),
+    width: size * 0.88,
+    height: size * 0.88,
+    fit: BoxFit.contain,
+    errorBuilder: (_, __, ___) {
+      return Image.asset(
+        _secondaryAssetPath(),
+        width: size * 0.88,
+        height: size * 0.88,
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) {
+          return _AvatarFigure(
+            mood: mood,
+            size: size,
+            bodyColor: Colors.white,
+            bodyTilt: _bodyTilt(mood),
+            headTilt: _headTilt(mood),
+            gender: gender,
+            avatarVariant: avatarVariant,
+          );
+        },
+      );
+    },
+  );
+}
 
   @override
 Widget build(BuildContext context) {

@@ -13,6 +13,8 @@ import 'edit_person_screen.dart' as edit_screen;
 
 import '../services/auth_service.dart';
 
+import '../services/remote_friend_requests_service.dart';
+
 enum ReactionType {
   warm,
   communication,
@@ -28,6 +30,10 @@ class PersonScreen extends StatefulWidget {
   final Future<void> Function()? onTogglePin;
   final bool isEditable;
   final bool isMyProfile;
+  final RemoteFriendRequest? friendRequest;
+  final Future<void> Function(RemoteFriendRequest request)? onAcceptRequest;
+  final Future<void> Function(RemoteFriendRequest request)? onDeclineRequest;
+  final Future<void> Function(RemoteFriendRequest request)? onCancelRequest;
 
   const PersonScreen({
     super.key,
@@ -37,6 +43,10 @@ class PersonScreen extends StatefulWidget {
     required this.isMyProfile,
     this.onPersonDeleted,
     this.onTogglePin,
+    this.friendRequest,
+    this.onAcceptRequest,
+    this.onDeclineRequest,
+    this.onCancelRequest,
   });
 
   @override
@@ -71,6 +81,119 @@ class _PersonScreenState extends State<PersonScreen>
 
   bool isFabMenuOpen = false;
 
+  bool get _isFriendRequest =>
+    currentPerson.sourceType == SourceType.friendRequestIncoming ||
+    currentPerson.sourceType == SourceType.friendRequestPending;
+
+  bool get _isIncomingRequest =>
+      currentPerson.sourceType == SourceType.friendRequestIncoming;
+
+  bool get _isPendingRequest =>
+      currentPerson.sourceType == SourceType.friendRequestPending;
+
+  String? get _requestAvatarAsset {
+    if (_isIncomingRequest) {
+      return 'assets/images/friend_requests/request_incoming.png';
+    }
+
+    if (_isPendingRequest) {
+      return 'assets/images/friend_requests/request_pending.png';
+    }
+
+    return null;
+  }
+
+  Future<void> _acceptIncomingRequest() async {
+  final request = widget.friendRequest;
+  if (request == null || widget.onAcceptRequest == null) return;
+
+  await widget.onAcceptRequest!(request);
+
+  if (!mounted) return;
+  Navigator.of(context).pop();
+}
+
+Future<void> _declineIncomingRequest() async {
+  final request = widget.friendRequest;
+  if (request == null || widget.onDeclineRequest == null) return;
+
+  await widget.onDeclineRequest!(request);
+
+  if (!mounted) return;
+  Navigator.of(context).pop();
+}
+
+Future<void> _cancelPendingRequest() async {
+  final request = widget.friendRequest;
+  if (request == null || widget.onCancelRequest == null) return;
+
+  await widget.onCancelRequest!(request);
+
+  if (!mounted) return;
+  Navigator.of(context).pop();
+}
+
+Widget _buildFriendRequestInfo() {
+  if (!_isFriendRequest) return const SizedBox.shrink();
+
+  final title = _isIncomingRequest
+      ? '${currentPerson.name} хочет добавить тебя'
+      : '${currentPerson.name} ещё думает';
+
+  final subtitle = _isIncomingRequest
+      ? 'Разреши добавление, чтобы вы оба появились друг у друга в списке.'
+      : 'Заявка отправлена. После подтверждения человек появится в списке друзей.';
+
+  return Padding(
+    padding: const EdgeInsets.fromLTRB(8, 18, 8, 0),
+    child: Column(
+      children: [
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppColors.primaryText(context),
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppColors.secondaryText(context),
+            fontSize: 14,
+            height: 1.4,
+          ),
+        ),
+        if (_isIncomingRequest) ...[
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: _acceptIncomingRequest,
+                  icon: const Icon(Icons.check_rounded),
+                  label: const Text('Добавить'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _declineIncomingRequest,
+                  icon: const Icon(Icons.close_rounded),
+                  label: const Text('Отклонить'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
     void _toggleFabMenu() {
     setState(() {
       isFabMenuOpen = !isFabMenuOpen;
@@ -82,29 +205,33 @@ class _PersonScreenState extends State<PersonScreen>
     setState(() => isFabMenuOpen = false);
   }
 
-  Widget _buildMiniActionButton({
-    required IconData icon,
-    required VoidCallback onTap,
-    required String heroTag,
-  }) {
-    return SizedBox(
-      width: 56,
-      height: 56,
-      child: FloatingActionButton(
-        heroTag: heroTag,
-        mini: true,
-        backgroundColor: AppColors.surface(context),
-        elevation: 0,
-        onPressed: onTap,
-        child: Icon(icon, color: AppColors.primaryText(context)),
+Widget _buildMiniActionButton({
+  required IconData icon,
+  required VoidCallback onTap,
+  required String heroTag,
+  Color? iconColor,
+}) {
+  return SizedBox(
+    width: 56,
+    height: 56,
+    child: FloatingActionButton(
+      heroTag: heroTag,
+      mini: true,
+      backgroundColor: AppColors.surface(context),
+      elevation: 0,
+      onPressed: onTap,
+      child: Icon(
+        icon,
+        color: iconColor ?? AppColors.primaryText(context),
       ),
-    );
-  }
+    ),
+  );
+}
 
 Widget _buildFabMenu() {
   final actions = <Widget>[];
 
-  if (widget.isEditable) {
+  if (!_isFriendRequest && widget.isEditable) {
     actions.add(
       _buildMiniActionButton(
         heroTag: 'person_edit_action',
@@ -117,22 +244,39 @@ Widget _buildFabMenu() {
     );
   }
 
-  actions.add(
-    _buildMiniActionButton(
-      heroTag: 'person_share_action',
-      icon: Icons.share,
-      onTap: () {
-        _closeFabMenu();
-        _showShareDialog();
-      },
-    ),
-  );
+  if (!_isFriendRequest) {
+    actions.add(
+      _buildMiniActionButton(
+        heroTag: 'person_share_action',
+        icon: Icons.share_outlined,
+        onTap: () {
+          _closeFabMenu();
+          _showShareDialog();
+        },
+      ),
+    );
+  }
 
-  if (widget.onPersonDeleted != null) {
+  if (_isPendingRequest) {
+    actions.add(
+      _buildMiniActionButton(
+        heroTag: 'person_cancel_request_action',
+        icon: Icons.delete_outline,
+        iconColor: Colors.redAccent,
+        onTap: () {
+          _closeFabMenu();
+          _cancelPendingRequest();
+        },
+      ),
+    );
+  }
+
+  if (!_isFriendRequest && widget.onPersonDeleted != null) {
     actions.add(
       _buildMiniActionButton(
         heroTag: 'person_delete_action',
         icon: Icons.delete_outline,
+        iconColor: Colors.redAccent,
         onTap: () {
           _closeFabMenu();
           _confirmDelete();
@@ -141,11 +285,12 @@ Widget _buildFabMenu() {
     );
   }
 
-  if (widget.isMyProfile) {
+  if (!_isFriendRequest && widget.isMyProfile) {
     actions.add(
       _buildMiniActionButton(
         heroTag: 'person_logout_action',
         icon: Icons.logout_rounded,
+        iconColor: Colors.redAccent,
         onTap: () {
           _closeFabMenu();
           _confirmLogout();
@@ -154,13 +299,13 @@ Widget _buildFabMenu() {
     );
   }
 
-  const radius = 78.0;
-  const startAngle = -90.0;
-  const endAngle = -180.0;
+  if (actions.isEmpty) {
+    return const SizedBox.shrink();
+  }
 
   return SizedBox(
-    width: 190,
-    height: 190,
+    width: 72,
+    height: 72 + (actions.length * 64),
     child: Stack(
       alignment: Alignment.bottomRight,
       children: [
@@ -168,24 +313,8 @@ Widget _buildFabMenu() {
           AnimatedPositioned(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOut,
-            right: isFabMenuOpen
-                ? _fabOffsetX(
-                    index: i,
-                    count: actions.length,
-                    radius: radius,
-                    startAngle: startAngle,
-                    endAngle: endAngle,
-                  )
-                : 0,
-            bottom: isFabMenuOpen
-                ? _fabOffsetY(
-                    index: i,
-                    count: actions.length,
-                    radius: radius,
-                    startAngle: startAngle,
-                    endAngle: endAngle,
-                  )
-                : 0,
+            right: 0,
+            bottom: isFabMenuOpen ? 72.0 + (i * 64.0) : 0,
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 140),
               opacity: isFabMenuOpen ? 1 : 0,
@@ -201,7 +330,7 @@ Widget _buildFabMenu() {
           elevation: 0,
           onPressed: _toggleFabMenu,
           child: Icon(
-            isFabMenuOpen ? Icons.close : Icons.add,
+            Icons.more_horiz_rounded,
             color: AppColors.primaryText(context),
           ),
         ),
@@ -1050,49 +1179,51 @@ String _recommendationEmoji(String text, bool positive) {
     }
   }
 
-  Future<void> _confirmDelete() async {
-    if (widget.onPersonDeleted == null) return;
+Future<void> _confirmDelete() async {
+  if (widget.onPersonDeleted == null) return;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: AppColors.card(context),
-          title: Text(
-            'Удалить человека?',
-            style: TextStyle(
-              color: AppColors.primaryText(context),
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) {
+      return AlertDialog(
+        backgroundColor: AppColors.card(context),
+        title: Text(
+          'Удалить человека?',
+          style: TextStyle(
+            color: AppColors.primaryText(context),
+          ),
+        ),
+        content: Text(
+          '“${currentPerson.name}” будет удалён из твоего списка.',
+          style: TextStyle(
+            color: AppColors.secondaryText(context),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text(
+              'Удалить',
+              style: TextStyle(color: Colors.redAccent),
             ),
           ),
-          content: Text(
-            '“${currentPerson.name}” будет удалён из твоего списка.',
-            style: TextStyle(
-              color: AppColors.secondaryText(context),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Отмена'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text(
-                'Удалить',
-                style: TextStyle(color: Colors.redAccent),
-              ),
-            ),
-          ],
-        );
-      },
-    );
+        ],
+      );
+    },
+  );
 
-    if (confirmed == true) {
-      await widget.onPersonDeleted!.call();
-      if (!mounted) return;
-      Navigator.pop(context);
-    }
-  }
+  if (confirmed != true) return;
+
+  await widget.onPersonDeleted!.call();
+
+  if (!mounted) return;
+
+  Navigator.of(context).popUntil((route) => route.isFirst);
+}
 
   @override
   Widget build(BuildContext context) {
@@ -1179,6 +1310,7 @@ WidgetsBinding.instance.addPostFrameCallback((_) {
                                 avatarVariant: currentPerson.avatarVariant,
                                 size: 300,
                                 isMyProfile: widget.isMyProfile,
+                                customAsset: _requestAvatarAsset,
                               ),
                             ),
                           ),
@@ -1187,40 +1319,44 @@ WidgetsBinding.instance.addPostFrameCallback((_) {
                     ],
                   ),
                 ),
-                Center(
-                  child: _badge(
-                    currentPerson.relationDisplayName,
-                    accent.withValues(alpha: 0.15),
-                    accent,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                const SizedBox(height: 12),
-                Text(
-                  widget.isMyProfile
-                      ? 'Мой настрой'
-                      : _moodTitle(currentPerson.mood),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: secondaryText,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    _moodHint(currentPerson.mood),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppColors.mutedText(context),
-                      fontSize: 14,
-                      height: 1.45,
+                if (_isFriendRequest)
+                  _buildFriendRequestInfo()
+                else ...[
+                  Center(
+                    child: _badge(
+                      currentPerson.relationDisplayName,
+                      accent.withValues(alpha: 0.15),
+                      accent,
                     ),
                   ),
-                ),
-                _buildCycleDays(),
-                _buildActiveCycleStageLabel(),
+                  const SizedBox(height: 18),
+                  const SizedBox(height: 12),
+                  Text(
+                    widget.isMyProfile
+                        ? 'Мой настрой'
+                        : _moodTitle(currentPerson.mood),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: secondaryText,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      _moodHint(currentPerson.mood),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.mutedText(context),
+                        fontSize: 14,
+                        height: 1.45,
+                      ),
+                    ),
+                  ),
+                  _buildCycleDays(),
+                  _buildActiveCycleStageLabel(),
+                ],
               ],
             ),
           );

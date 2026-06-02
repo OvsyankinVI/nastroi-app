@@ -1,38 +1,44 @@
 import '../models/person.dart';
 
-// Собираем человеко-понятную HTTPS-ссылку.
-// Пока это ещё не universal link, а "веб-формат" ссылки,
-// который можно пересылать и вставлять в импорт.
 String buildPersonLink(Person person) {
-  final uri = Uri(
-    scheme: 'https',
-    host: 'nastroi.app',
-    path: '/person',
-    queryParameters: {
-      // Пока в ссылке всё ещё лежит exportCode.
-      // Позже это можно будет заменить на реальный backend-id.
-      'data': person.toExportCode(),
-    },
-  );
-
-  return uri.toString();
+  return 'https://nastroi.app/person/${person.publicId}';
 }
 
-// Универсальный парсер:
-// - если пришёл raw export code -> тоже попробуем распарсить
-// - если пришла deep link ссылка -> достанем query data
+String? tryParsePublicIdFromRaw(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return null;
+
+  try {
+    final uri = Uri.parse(trimmed);
+
+    if (uri.host == 'nastroi.app' &&
+        uri.pathSegments.length >= 2 &&
+        uri.pathSegments.first == 'person') {
+      return uri.pathSegments[1];
+    }
+
+    if (uri.scheme == 'nastroi' &&
+        uri.host == 'person' &&
+        uri.pathSegments.isNotEmpty) {
+      return uri.pathSegments.first;
+    }
+  } catch (_) {}
+
+  if (trimmed.startsWith('user_')) {
+    return trimmed;
+  }
+
+  return null;
+}
+
 Person? tryParsePersonFromRaw(String raw) {
   final trimmed = raw.trim();
   if (trimmed.isEmpty) return null;
 
-  // Сначала пробуем как обычный экспортный код.
   try {
     return Person.fromExportCode(trimmed);
-  } catch (_) {
-    // Идём дальше.
-  }
+  } catch (_) {}
 
-  // Потом пробуем как ссылку.
   try {
     final uri = Uri.parse(trimmed);
     return tryParsePersonFromUri(uri);
@@ -41,10 +47,6 @@ Person? tryParsePersonFromRaw(String raw) {
   }
 }
 
-// Парсим человека из ссылки.
-// Поддерживаем:
-// - https://nastroi.app/person?data=...
-// - старый кастомный формат, если он где-то ещё остался
 Person? tryParsePersonFromUri(Uri uri) {
   final data = uri.queryParameters['data'];
   if (data == null || data.isEmpty) return null;

@@ -22,6 +22,8 @@ enum RelationType {
 enum SourceType {
   local,
   imported,
+  friendRequestIncoming,
+  friendRequestPending,
 }
 
 enum GenderType {

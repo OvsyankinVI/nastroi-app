@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
+import '../models/person.dart';
+import '../services/remote_people_service.dart';
 import '../utils/person_link.dart';
 
 class ImportPersonScreen extends StatefulWidget {
@@ -12,7 +14,9 @@ class ImportPersonScreen extends StatefulWidget {
 
 class _ImportPersonScreenState extends State<ImportPersonScreen> {
   final TextEditingController _codeController = TextEditingController();
+
   String? errorText;
+  bool isLoading = false;
 
   @override
   void dispose() {
@@ -37,7 +41,7 @@ class _ImportPersonScreenState extends State<ImportPersonScreen> {
 
   Widget _primaryButton({
     required String title,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
   }) {
     return SizedBox(
       width: double.infinity,
@@ -52,19 +56,26 @@ class _ImportPersonScreenState extends State<ImportPersonScreen> {
             borderRadius: BorderRadius.circular(18),
           ),
         ),
-        child: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        child: isLoading
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }
 
-  void _import() {
+  Future<void> _import() async {
     final raw = _codeController.text.trim();
+
     if (raw.isEmpty) {
       setState(() {
         errorText = 'Вставь ссылку или код';
@@ -72,16 +83,53 @@ class _ImportPersonScreenState extends State<ImportPersonScreen> {
       return;
     }
 
-    final person = tryParsePersonFromRaw(raw);
+    setState(() {
+      isLoading = true;
+      errorText = null;
+    });
 
-    if (person == null) {
+    try {
+      final publicId = tryParsePublicIdFromRaw(raw);
+
+      if (publicId != null) {
+        final person =
+            await RemotePeopleService.findPublicPersonByPublicId(publicId);
+
+        if (!mounted) return;
+
+        if (person == null) {
+          setState(() {
+            errorText = 'Профиль не найден';
+            isLoading = false;
+          });
+          return;
+        }
+
+        Navigator.pop(context, person);
+        return;
+      }
+
+      final person = tryParsePersonFromRaw(raw);
+
+      if (!mounted) return;
+
+      if (person == null) {
+        setState(() {
+          errorText = 'Ссылка или код не распознаны';
+          isLoading = false;
+        });
+        return;
+      }
+
+      Navigator.pop(context, person);
+    } catch (_) {
+      if (!mounted) return;
+
       setState(() {
-        errorText = 'Ссылка или код не распознаны';
+        errorText = 'Не удалось импортировать профиль';
+        isLoading = false;
       });
-      return;
     }
-
-    Navigator.pop(context, person);
   }
 
   @override
@@ -118,7 +166,7 @@ class _ImportPersonScreenState extends State<ImportPersonScreen> {
           const SizedBox(height: 24),
           _primaryButton(
             title: 'Импортировать',
-            onPressed: _import,
+            onPressed: isLoading ? null : _import,
           ),
         ],
       ),
