@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "959322533028",
+    "project_id": "nastroy-app",
+    "storage_bucket": "nastroy-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:959322533028:android:b6a5ddc774a4fdcfd30a31",
+        "android_client_info": {
+          "package_name": "com.example.nastroi_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJDGWvb4wIVFgpSm0ofxDteMJO9AONgBw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

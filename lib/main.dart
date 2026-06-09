@@ -12,16 +12,38 @@ import 'services/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_config.dart';
 import 'widgets/auth_gate.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   await Supabase.initialize(
     url: SupabaseConfig.url,
     anonKey: SupabaseConfig.anonKey,
   );
+
+  Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  await Supabase.initialize(
+    url: SupabaseConfig.url,
+    anonKey: SupabaseConfig.anonKey,
+  );
+
+  await NotificationService.initialize(); // <-- добавить
+    runApp(const NastroiApp());
+  }
 
   runApp(const NastroiApp());
 }

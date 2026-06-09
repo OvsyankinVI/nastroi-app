@@ -11,8 +11,17 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
+  static bool _initialized = false;
+
+  static const int _notificationHour = 9;
+  static const int _notificationMinute = 0;
+
+
   static Future<void> init() async {
+    if (_initialized) return;
+
     tz_data.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Europe/Moscow'));
 
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
@@ -25,8 +34,8 @@ class NotificationService {
     );
 
     await _plugin.initialize(
-      settings: settings,
-    );
+  settings: settings,
+);
 
     await _plugin
         .resolvePlatformSpecificImplementation<
@@ -36,13 +45,17 @@ class NotificationService {
           badge: true,
           sound: true,
         );
+
+    _initialized = true;
   }
 
   static Future<void> initialize() async {
     await init();
   }
 
-  static Future<void> rescheduleCycleNotifications(List<Person> people) async {
+  static Future<void> rescheduleCycleNotifications(
+    List<Person> people,
+  ) async {
     await _plugin.cancelAll();
 
     for (final person in people) {
@@ -51,25 +64,32 @@ class NotificationService {
   }
 
   static Future<void> scheduleCycleNotification(Person person) async {
-    if (!person.lifeCycleEnabled || person.cycleStages.isEmpty) return;
+    if (!person.lifeCycleEnabled || person.cycleStages.isEmpty) {
+      return;
+    }
 
     final startDateIso = person.cycleStartDateIso;
-    if (startDateIso == null) return;
+    if (startDateIso == null) {
+      return;
+    }
 
     final startDate = DateTime.tryParse(startDateIso);
-    if (startDate == null) return;
+    if (startDate == null) {
+      return;
+    }
 
     final nextStage = _nextStageChange(person, startDate);
-    if (nextStage == null) return;
+    if (nextStage == null) {
+      return;
+    }
 
-// Реальное уведомление: в день следующей смены этапа в 09:00
-final notificationDate = DateTime(
-  nextStage.date.year,
-  nextStage.date.month,
-  nextStage.date.day,
-  9,
-  0,
-);
+    final notificationDate = DateTime(
+      nextStage.date.year,
+      nextStage.date.month,
+      nextStage.date.day,
+      _notificationHour,
+      _notificationMinute,
+    );
 
     await _plugin.zonedSchedule(
       id: _notificationId(person.publicId),
@@ -92,18 +112,26 @@ final notificationDate = DateTime(
     DateTime startDate,
   ) {
     final stages = person.cycleStages;
-    if (stages.isEmpty) return null;
+    if (stages.isEmpty) {
+      return null;
+    }
 
     final totalDays = stages.fold<int>(
       0,
       (sum, stage) => sum + stage.durationDays,
     );
 
-    if (totalDays <= 0) return null;
+    if (totalDays <= 0) {
+      return null;
+    }
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final start = DateTime(startDate.year, startDate.month, startDate.day);
+    final start = DateTime(
+      startDate.year,
+      startDate.month,
+      startDate.day,
+    );
 
     final diff = today.difference(start).inDays;
     final safeDiff = diff < 0 ? 0 : diff;
@@ -126,7 +154,9 @@ final notificationDate = DateTime(
         );
 
         return _NextStageChange(
-          date: today.add(Duration(days: daysUntilNextStage)),
+          date: today.add(
+            Duration(days: daysUntilNextStage),
+          ),
           stageTitle: nextStage.title.isNotEmpty
               ? nextStage.title
               : _moodLabel(nextStage.mood),
@@ -145,7 +175,10 @@ final notificationDate = DateTime(
 
     for (final stage in stages) {
       passed += stage.durationDays;
-      if (dayNumber <= passed) return stage;
+
+      if (dayNumber <= passed) {
+        return stage;
+      }
     }
 
     return stages.last;
@@ -159,7 +192,7 @@ final notificationDate = DateTime(
         return 'Спокойно';
       case MoodType.sad:
         return 'Грустно';
-        case MoodType.irritated:
+      case MoodType.irritated:
         return 'Раздражён';
       case MoodType.tired:
         return 'Устал';

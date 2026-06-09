@@ -25,6 +25,8 @@ import '../services/remote_friend_requests_service.dart';
 
 import '../services/realtime_people_service.dart';
 
+import 'dart:async';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -418,6 +420,22 @@ String _friendImportErrorMessage(Object error) {
   return 'Не удалось добавить человека';
 }
 
+Future<void> _refreshRemoteFriendsWithRetry() async {
+  for (int attempt = 0; attempt < 4; attempt++) {
+    await _refreshRemoteFriends();
+
+    final hasPendingRequest = people.any(
+      (person) =>
+          person.sourceType == SourceType.friendRequestIncoming ||
+          person.sourceType == SourceType.friendRequestPending,
+    );
+
+    if (!hasPendingRequest) return;
+
+    await Future.delayed(const Duration(milliseconds: 700));
+  }
+}
+
 Future<List<Person>> _mergeRemoteFriends(List<Person> localPeople) async {
   final remoteFriends = await RemotePeopleService.loadMyRemoteFriends();
 
@@ -474,11 +492,16 @@ Future<void> _openImportPerson() async {
   await _refreshFriendRequests();
 }
 
+Future<void> _refreshAll() async {
+  await _refreshRemoteFriends();
+  await _refreshFriendRequests();
+}
+
 Future<void> _acceptRequest(RemoteFriendRequest request) async {
   try {
     await RemoteFriendRequestsService.acceptRequest(request.id);
 
-    await _refreshRemoteFriends();
+    await _refreshRemoteFriendsWithRetry();
 
     if (!mounted) return;
 
@@ -496,12 +519,24 @@ Future<void> _acceptRequest(RemoteFriendRequest request) async {
 
 Future<void> _declineRequest(RemoteFriendRequest request) async {
   await RemoteFriendRequestsService.declineRequest(request.id);
-  await _refreshFriendRequests();
+
+  if (!mounted) return;
+
+  setState(() {
+    _latestFriendRequests.removeWhere((r) => r.id == request.id);
+    people.removeWhere((p) => p.id == 'request_${request.id}');
+  });
 }
 
 Future<void> _cancelRequest(RemoteFriendRequest request) async {
   await RemoteFriendRequestsService.cancelRequest(request.id);
-  await _refreshFriendRequests();
+
+  if (!mounted) return;
+
+  setState(() {
+    _latestFriendRequests.removeWhere((r) => r.id == request.id);
+    people.removeWhere((p) => p.id == 'request_${request.id}');
+  });
 }
 
   Future<void> _openAddMenu() async {
@@ -1082,6 +1117,14 @@ Future<void> _cancelRequest(RemoteFriendRequest request) async {
         ),
         actions: [
           IconButton(
+            tooltip: 'Обновить',
+            onPressed: _refreshAll,
+            icon: Icon(
+              Icons.refresh_rounded,
+              color: AppColors.secondaryText(context),
+            ),
+          ),
+          IconButton(
             tooltip: 'Сменить тему',
             onPressed: () {
               appThemeMode.value =
@@ -1102,9 +1145,9 @@ Future<void> _cancelRequest(RemoteFriendRequest request) async {
       ),
       floatingActionButton: _buildFabMenu(),
       body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: _closeFabMenu,
-        child: isLoading
+          behavior: HitTestBehavior.opaque,
+          onTap: _closeFabMenu,
+          child: isLoading
             ? Center(
                 child: CircularProgressIndicator(
                   color: AppColors.secondaryText(context),
