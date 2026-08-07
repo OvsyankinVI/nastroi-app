@@ -5,17 +5,14 @@ import '../data/people_repository.dart';
 import '../models/person.dart';
 import 'person_screen.dart';
 
-import 'package:supabase_flutter/supabase_flutter.dart'; 
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/remote_friends_service.dart';
 
 class LinkPersonPreviewScreen extends StatefulWidget {
   final Person personFromLink;
 
-  const LinkPersonPreviewScreen({
-    super.key,
-    required this.personFromLink,
-  });
+  const LinkPersonPreviewScreen({super.key, required this.personFromLink});
 
   @override
   State<LinkPersonPreviewScreen> createState() =>
@@ -60,54 +57,54 @@ class _LinkPersonPreviewScreenState extends State<LinkPersonPreviewScreen> {
     });
   }
 
-Future<void> _addPerson() async {
-  try {
-    await RemoteFriendsService.addFriendByPublicId(
-      widget.personFromLink.publicId,
-    );
+  Future<void> _addPerson() async {
+    try {
+      await RemoteFriendsService.addFriendByPublicId(
+        widget.personFromLink.publicId,
+      );
 
-    final people = await _repository.loadPeople();
+      final people = await _repository.loadPeople();
 
-    final alreadyExists = people.any(
-      (person) => person.publicId == widget.personFromLink.publicId,
-    );
+      final alreadyExists = people.any(
+        (person) => person.publicId == widget.personFromLink.publicId,
+      );
 
-    if (!alreadyExists) {
-      people.add(widget.personFromLink);
-      await _repository.savePeople(people);
+      if (!alreadyExists) {
+        people.add(widget.personFromLink);
+        await _repository.savePeople(people);
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _existingPerson = widget.personFromLink;
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Человек добавлен')));
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_friendErrorMessage(error))));
+    }
+  }
+
+  String _friendErrorMessage(Object error) {
+    final text = error.toString().toLowerCase();
+
+    if (text.contains('самого себя')) {
+      return 'Нельзя добавить самого себя';
     }
 
-    if (!mounted) return;
+    if (text.contains('не найден')) {
+      return 'Профиль не найден';
+    }
 
-    setState(() {
-      _existingPerson = widget.personFromLink;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Человек добавлен')),
-    );
-  } catch (error) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(_friendErrorMessage(error))),
-    );
+    return 'Не удалось добавить человека';
   }
-}
-
-String _friendErrorMessage(Object error) {
-  final text = error.toString().toLowerCase();
-
-  if (text.contains('самого себя')) {
-    return 'Нельзя добавить самого себя';
-  }
-
-  if (text.contains('не найден')) {
-    return 'Профиль не найден';
-  }
-
-  return 'Не удалось добавить человека';
-}
 
   Color _glowColor(MoodType mood) {
     switch (mood) {
@@ -181,10 +178,7 @@ String _friendErrorMessage(Object error) {
         ),
         child: Text(
           title,
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -271,10 +265,7 @@ String _friendErrorMessage(Object error) {
               ),
             ),
             const Spacer(),
-            _primaryButton(
-              title: 'Добавить',
-              onPressed: _addPerson,
-            ),
+            _primaryButton(title: 'Добавить', onPressed: _addPerson),
             const SizedBox(height: 12),
           ],
         ),

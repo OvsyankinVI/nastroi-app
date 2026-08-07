@@ -15,11 +15,11 @@ class _CreatePersonScreenState extends State<CreatePersonScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _customRelationController =
       TextEditingController();
-final List<_CustomActionDraft> _customHelpfulActions = [];
-final List<_CustomActionDraft> _customAvoidActions = [];
+  final List<_CustomActionDraft> _customHelpfulActions = [];
+  final List<_CustomActionDraft> _customAvoidActions = [];
 
   MoodType _selectedMood = MoodType.calm;
-  RelationType _selectedRelation = RelationType.friend;
+  final RelationType _selectedRelation = RelationType.friend;
   GenderType _selectedGender = GenderType.male;
   int _selectedAvatarVariant = 0;
 
@@ -91,25 +91,6 @@ final List<_CustomActionDraft> _customAvoidActions = [];
     }
   }
 
-  String _relationLabel(RelationType relation) {
-    switch (relation) {
-      case RelationType.partner:
-        return 'Партнер';
-      case RelationType.friend:
-        return 'Друг';
-      case RelationType.parent:
-        return 'Родитель';
-      case RelationType.child:
-        return 'Ребёнок';
-      case RelationType.colleague:
-        return 'Коллега';
-      case RelationType.other:
-        return 'Другое';
-      case RelationType.me:
-        return 'Я';
-    }
-  }
-
   Widget _sectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -129,10 +110,7 @@ final List<_CustomActionDraft> _customAvoidActions = [];
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: selected
               ? AppColors.accent(context)
@@ -142,9 +120,7 @@ final List<_CustomActionDraft> _customAvoidActions = [];
         child: Text(
           title,
           style: TextStyle(
-            color: selected
-                ? Colors.white
-                : AppColors.primaryText(context),
+            color: selected ? Colors.white : AppColors.primaryText(context),
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -152,7 +128,7 @@ final List<_CustomActionDraft> _customAvoidActions = [];
     );
   }
 
-List<String> _buildHelpfulActions() {
+  List<String> _buildHelpfulActions() {
     final values = _selectedHelpful.where((e) => e != 'Другое').toList();
 
     for (final item in _customHelpfulActions) {
@@ -178,47 +154,78 @@ List<String> _buildHelpfulActions() {
     return values.take(3).toList();
   }
 
-Widget _buildCustomActionFields({
-  required List<_CustomActionDraft> items,
-  required bool isHelpful,
-}) {
-  if (items.isEmpty) return const SizedBox.shrink();
+  Widget _buildCustomActionFields({
+    required List<_CustomActionDraft> items,
+    required bool isHelpful,
+  }) {
+    if (items.isEmpty) return const SizedBox.shrink();
 
-  final errorText = isHelpful ? _helpfulError : _avoidError;
+    final errorText = isHelpful ? _helpfulError : _avoidError;
 
-  return Padding(
-    padding: const EdgeInsets.only(top: 12),
-    child: Column(
-      children: [
-        for (int i = 0; i < items.length; i++) ...[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: items[i].controller,
-                  maxLength: 20,
-                  style: TextStyle(
-                    color: AppColors.primaryText(context),
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        children: [
+          for (int i = 0; i < items.length; i++) ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: items[i].controller,
+                    maxLength: 20,
+                    style: TextStyle(color: AppColors.primaryText(context)),
+                    decoration: InputDecoration(
+                      labelText: 'Свой вариант ${i + 1}',
+                      errorText: i == items.length - 1 ? errorText : null,
+                      filled: true,
+                      fillColor: AppColors.surface(context),
+                      labelStyle: TextStyle(
+                        color: AppColors.secondaryText(context),
+                      ),
+                      counterStyle: TextStyle(
+                        color: AppColors.subtleText(context),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    onChanged: (_) {
+                      setState(() {
+                        if (isHelpful) {
+                          _helpfulError = null;
+                        } else {
+                          _avoidError = null;
+                        }
+                      });
+                    },
                   ),
-                  decoration: InputDecoration(
-                    labelText: 'Свой вариант ${i + 1}',
-                    errorText: i == items.length - 1 ? errorText : null,
-                    filled: true,
-                    fillColor: AppColors.surface(context),
-                    labelStyle: TextStyle(
-                      color: AppColors.secondaryText(context),
-                    ),
-                    counterStyle: TextStyle(
-                      color: AppColors.subtleText(context),
-                    ),
-                    border: OutlineInputBorder(
+                ),
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: () => _pickEmoji(isHelpful: isHelpful, index: i),
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface(context),
                       borderRadius: BorderRadius.circular(18),
-                      borderSide: BorderSide.none,
+                    ),
+                    child: Text(
+                      items[i].emoji,
+                      style: const TextStyle(fontSize: 28),
                     ),
                   ),
-                  onChanged: (_) {
+                ),
+                const SizedBox(width: 6),
+                IconButton(
+                  onPressed: () {
                     setState(() {
+                      final removed = items.removeAt(i);
+                      removed.controller.dispose();
+
                       if (isHelpful) {
                         _helpfulError = null;
                       } else {
@@ -226,143 +233,114 @@ Widget _buildCustomActionFields({
                       }
                     });
                   },
+                  icon: Icon(
+                    Icons.close,
+                    color: AppColors.secondaryText(context),
+                  ),
                 ),
+              ],
+            ),
+            if (i != items.length - 1) const SizedBox(height: 8),
+          ],
+          if (_selectedHelpful.length + _customHelpfulActions.length < 3 &&
+              isHelpful)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _customHelpfulActions.add(
+                      _CustomActionDraft(
+                        controller: TextEditingController(),
+                        emoji: '✨',
+                      ),
+                    );
+                  });
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Добавить ещё'),
               ),
-              const SizedBox(width: 10),
-              GestureDetector(
-                onTap: () => _pickEmoji(
-                  isHelpful: isHelpful,
-                  index: i,
-                ),
+            ),
+          if (_selectedAvoid.length + _customAvoidActions.length < 3 &&
+              !isHelpful)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _customAvoidActions.add(
+                      _CustomActionDraft(
+                        controller: TextEditingController(),
+                        emoji: '⚠️',
+                      ),
+                    );
+                  });
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Добавить ещё'),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickEmoji({required bool isHelpful, required int index}) async {
+    final emojis = isHelpful
+        ? [
+            '✨',
+            '🤗',
+            '💬',
+            '📞',
+            '🎁',
+            '🍬',
+            '🚶',
+            '🤫',
+            '🫶',
+            '🌷',
+            '☕️',
+            '🎧',
+          ]
+        : ['⚠️', '🔊', '⚡', '🧱', '🚫', '⏩', '❗', '🙄', '⛔', '😤', '💢', '🛑'];
+
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.card(context),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: emojis.map((emoji) {
+              return GestureDetector(
+                onTap: () => Navigator.pop(context, emoji),
                 child: Container(
-                  width: 56,
-                  height: 56,
+                  width: 52,
+                  height: 52,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: AppColors.surface(context),
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Text(
-                    items[i].emoji,
-                    style: const TextStyle(fontSize: 28),
-                  ),
+                  child: Text(emoji, style: const TextStyle(fontSize: 28)),
                 ),
-              ),
-              const SizedBox(width: 6),
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    final removed = items.removeAt(i);
-                    removed.controller.dispose();
-
-                    if (isHelpful) {
-                      _helpfulError = null;
-                    } else {
-                      _avoidError = null;
-                    }
-                  });
-                },
-                icon: Icon(
-                  Icons.close,
-                  color: AppColors.secondaryText(context),
-                ),
-              ),
-            ],
+              );
+            }).toList(),
           ),
-          if (i != items.length - 1) const SizedBox(height: 8),
-        ],
-        if (_selectedHelpful.length + _customHelpfulActions.length < 3 &&
-            isHelpful)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () {
-                setState(() {
-                  _customHelpfulActions.add(
-                    _CustomActionDraft(
-                      controller: TextEditingController(),
-                      emoji: '✨',
-                    ),
-                  );
-                });
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Добавить ещё'),
-            ),
-          ),
-        if (_selectedAvoid.length + _customAvoidActions.length < 3 &&
-            !isHelpful)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () {
-                setState(() {
-                  _customAvoidActions.add(
-                    _CustomActionDraft(
-                      controller: TextEditingController(),
-                      emoji: '⚠️',
-                    ),
-                  );
-                });
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Добавить ещё'),
-            ),
-          ),
-      ],
-    ),
-  );
-}
+        );
+      },
+    );
 
-Future<void> _pickEmoji({
-  required bool isHelpful,
-  required int index,
-}) async {
-  final emojis = isHelpful
-      ? ['✨', '🤗', '💬', '📞', '🎁', '🍬', '🚶', '🤫', '🫶', '🌷', '☕️', '🎧']
-      : ['⚠️', '🔊', '⚡', '🧱', '🚫', '⏩', '❗', '🙄', '⛔', '😤', '💢', '🛑'];
+    if (selected == null) return;
 
-  final selected = await showModalBottomSheet<String>(
-    context: context,
-    backgroundColor: AppColors.card(context),
-    builder: (context) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
-        child: Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: emojis.map((emoji) {
-            return GestureDetector(
-              onTap: () => Navigator.pop(context, emoji),
-              child: Container(
-                width: 52,
-                height: 52,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: AppColors.surface(context),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  emoji,
-                  style: const TextStyle(fontSize: 28),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      );
-    },
-  );
-
-  if (selected == null) return;
-
-  setState(() {
-    final list = isHelpful ? _customHelpfulActions : _customAvoidActions;
-    if (index >= 0 && index < list.length) {
-      list[index].emoji = selected;
-    }
-  });
-}
+    setState(() {
+      final list = isHelpful ? _customHelpfulActions : _customAvoidActions;
+      if (index >= 0 && index < list.length) {
+        list[index].emoji = selected;
+      }
+    });
+  }
 
   void _save() {
     final name = _nameController.text.trim();
@@ -372,15 +350,11 @@ Future<void> _pickEmoji({
 
     setState(() {
       _nameError = name.isEmpty ? 'Введите имя' : null;
-      _helpfulError =
-          helpful.isEmpty ? 'Выберите хотя бы 1 вариант' : null;
-      _avoidError =
-          avoid.isEmpty ? 'Выберите хотя бы 1 вариант' : null;
+      _helpfulError = helpful.isEmpty ? 'Выберите хотя бы 1 вариант' : null;
+      _avoidError = avoid.isEmpty ? 'Выберите хотя бы 1 вариант' : null;
     });
 
-    if (_nameError != null ||
-        _helpfulError != null ||
-        _avoidError != null) {
+    if (_nameError != null || _helpfulError != null || _avoidError != null) {
       return;
     }
 
@@ -395,10 +369,9 @@ Future<void> _pickEmoji({
       avoidActions: avoid,
       relationType: _selectedRelation,
       sourceType: SourceType.local,
-      customRelationLabel:
-          _selectedRelation == RelationType.other
-              ? _normalize(_customRelationController.text)
-              : null,
+      customRelationLabel: _selectedRelation == RelationType.other
+          ? _normalize(_customRelationController.text)
+          : null,
     );
 
     Navigator.pop(context, person);
@@ -413,9 +386,7 @@ Future<void> _pickEmoji({
         elevation: 0,
         title: Text(
           'Новый человек',
-          style: TextStyle(
-            color: AppColors.primaryText(context),
-          ),
+          style: TextStyle(color: AppColors.primaryText(context)),
         ),
         actions: [
           TextButton(
@@ -427,7 +398,7 @@ Future<void> _pickEmoji({
                 fontWeight: FontWeight.w600,
               ),
             ),
-          )
+          ),
         ],
       ),
       body: ListView(
@@ -446,13 +417,8 @@ Future<void> _pickEmoji({
 
           TextField(
             controller: _nameController,
-            style: TextStyle(
-              color: AppColors.primaryText(context),
-            ),
-            decoration: InputDecoration(
-              hintText: 'Имя',
-              errorText: _nameError,
-            ),
+            style: TextStyle(color: AppColors.primaryText(context)),
+            decoration: InputDecoration(hintText: 'Имя', errorText: _nameError),
           ),
 
           const SizedBox(height: 28),
@@ -462,24 +428,16 @@ Future<void> _pickEmoji({
           Wrap(
             spacing: 10,
             children: [
-              _chip(
-                'Мужчина',
-                _selectedGender == GenderType.male,
-                () {
-                  setState(() {
-                    _selectedGender = GenderType.male;
-                  });
-                },
-              ),
-              _chip(
-                'Женщина',
-                _selectedGender == GenderType.female,
-                () {
-                  setState(() {
-                    _selectedGender = GenderType.female;
-                  });
-                },
-              ),
+              _chip('Мужчина', _selectedGender == GenderType.male, () {
+                setState(() {
+                  _selectedGender = GenderType.male;
+                });
+              }),
+              _chip('Женщина', _selectedGender == GenderType.female, () {
+                setState(() {
+                  _selectedGender = GenderType.female;
+                });
+              }),
             ],
           ),
 
@@ -491,15 +449,11 @@ Future<void> _pickEmoji({
             spacing: 10,
             runSpacing: 10,
             children: MoodType.values.map((mood) {
-              return _chip(
-                _moodLabel(mood),
-                _selectedMood == mood,
-                () {
-                  setState(() {
-                    _selectedMood = mood;
-                  });
-                },
-              );
+              return _chip(_moodLabel(mood), _selectedMood == mood, () {
+                setState(() {
+                  _selectedMood = mood;
+                });
+              });
             }).toList(),
           ),
 
@@ -509,8 +463,7 @@ Future<void> _pickEmoji({
 
           Row(
             children: List.generate(3, (index) {
-              final selected =
-                  _selectedAvatarVariant == index;
+              final selected = _selectedAvatarVariant == index;
 
               return Expanded(
                 child: GestureDetector(
@@ -520,9 +473,7 @@ Future<void> _pickEmoji({
                     });
                   },
                   child: Container(
-                    margin: EdgeInsets.only(
-                      right: index == 2 ? 0 : 10,
-                    ),
+                    margin: EdgeInsets.only(right: index == 2 ? 0 : 10),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: AppColors.surface(context),
@@ -556,40 +507,39 @@ Future<void> _pickEmoji({
             children: _helpfulOptions.map((item) {
               final selected = _selectedHelpful.contains(item);
 
-              return _chip(
-                item,
-                selected,
-                () {
-                  setState(() {
-                    if (item == 'Другое') {
-                      final total = _selectedHelpful.length + _customHelpfulActions.length;
+              return _chip(item, selected, () {
+                setState(() {
+                  if (item == 'Другое') {
+                    final total =
+                        _selectedHelpful.length + _customHelpfulActions.length;
 
-                      if (total < 3) {
-                        _customHelpfulActions.add(
-                          _CustomActionDraft(
-                            controller: TextEditingController(),
-                            emoji: '✨',
-                          ),
-                        );
-                        _helpfulError = null;
-                      } else {
-                        _helpfulError = 'Можно выбрать максимум 3 варианта';
-                      }
-
-                      return;
-                    }
-
-                    if (selected) {
-                      _selectedHelpful.remove(item);
-                    } else if (_selectedHelpful.length + _customHelpfulActions.length < 3) {
-                      _selectedHelpful.add(item);
+                    if (total < 3) {
+                      _customHelpfulActions.add(
+                        _CustomActionDraft(
+                          controller: TextEditingController(),
+                          emoji: '✨',
+                        ),
+                      );
                       _helpfulError = null;
                     } else {
                       _helpfulError = 'Можно выбрать максимум 3 варианта';
                     }
-                  });
-                },
-              );
+
+                    return;
+                  }
+
+                  if (selected) {
+                    _selectedHelpful.remove(item);
+                  } else if (_selectedHelpful.length +
+                          _customHelpfulActions.length <
+                      3) {
+                    _selectedHelpful.add(item);
+                    _helpfulError = null;
+                  } else {
+                    _helpfulError = 'Можно выбрать максимум 3 варианта';
+                  }
+                });
+              });
             }).toList(),
           ),
 
@@ -600,12 +550,7 @@ Future<void> _pickEmoji({
 
           if (_helpfulError != null) ...[
             const SizedBox(height: 8),
-            Text(
-              _helpfulError!,
-              style: const TextStyle(
-                color: Colors.red,
-              ),
-            )
+            Text(_helpfulError!, style: const TextStyle(color: Colors.red)),
           ],
 
           const SizedBox(height: 28),
@@ -618,40 +563,39 @@ Future<void> _pickEmoji({
             children: _avoidOptions.map((item) {
               final selected = _selectedAvoid.contains(item);
 
-              return _chip(
-                item,
-                selected,
-                () {
-                  setState(() {
-                    if (item == 'Другое') {
-                      final total = _selectedAvoid.length + _customAvoidActions.length;
+              return _chip(item, selected, () {
+                setState(() {
+                  if (item == 'Другое') {
+                    final total =
+                        _selectedAvoid.length + _customAvoidActions.length;
 
-                      if (total < 3) {
-                        _customAvoidActions.add(
-                          _CustomActionDraft(
-                            controller: TextEditingController(),
-                            emoji: '⚠️',
-                          ),
-                        );
-                        _avoidError = null;
-                      } else {
-                        _avoidError = 'Можно выбрать максимум 3 варианта';
-                      }
-
-                      return;
-                    }
-
-                    if (selected) {
-                      _selectedAvoid.remove(item);
-                    } else if (_selectedAvoid.length + _customAvoidActions.length < 3) {
-                      _selectedAvoid.add(item);
+                    if (total < 3) {
+                      _customAvoidActions.add(
+                        _CustomActionDraft(
+                          controller: TextEditingController(),
+                          emoji: '⚠️',
+                        ),
+                      );
                       _avoidError = null;
                     } else {
                       _avoidError = 'Можно выбрать максимум 3 варианта';
                     }
-                  });
-                },
-              );
+
+                    return;
+                  }
+
+                  if (selected) {
+                    _selectedAvoid.remove(item);
+                  } else if (_selectedAvoid.length +
+                          _customAvoidActions.length <
+                      3) {
+                    _selectedAvoid.add(item);
+                    _avoidError = null;
+                  } else {
+                    _avoidError = 'Можно выбрать максимум 3 варианта';
+                  }
+                });
+              });
             }).toList(),
           ),
 
@@ -662,12 +606,7 @@ Future<void> _pickEmoji({
 
           if (_avoidError != null) ...[
             const SizedBox(height: 8),
-            Text(
-              _avoidError!,
-              style: const TextStyle(
-                color: Colors.red,
-              ),
-            )
+            Text(_avoidError!, style: const TextStyle(color: Colors.red)),
           ],
 
           const SizedBox(height: 40),
@@ -676,12 +615,10 @@ Future<void> _pickEmoji({
     );
   }
 }
+
 class _CustomActionDraft {
   final TextEditingController controller;
   String emoji;
 
-  _CustomActionDraft({
-    required this.controller,
-    required this.emoji,
-  });
+  _CustomActionDraft({required this.controller, required this.emoji});
 }

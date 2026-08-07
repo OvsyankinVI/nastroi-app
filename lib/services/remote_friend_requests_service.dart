@@ -56,13 +56,13 @@ class RemoteFriendRequestsService {
     }
 
     await _client.from('friend_requests').insert({
-        'requester_user_id': user.id,
-        'requester_person_id': myPerson['id'],
-        'target_user_id': targetPerson['owner_user_id'],
-        'target_person_id': targetPerson['id'],
-        'status': 'pending',
-        'updated_at': DateTime.now().toIso8601String(),
-        });
+      'requester_user_id': user.id,
+      'requester_person_id': myPerson['id'],
+      'target_user_id': targetPerson['owner_user_id'],
+      'target_person_id': targetPerson['id'],
+      'status': 'pending',
+      'updated_at': DateTime.now().toIso8601String(),
+    });
   }
 
   static Future<List<RemoteFriendRequest>> loadMyRequests() async {
@@ -86,8 +86,9 @@ class RemoteFriendRequestsService {
     return rows.map<RemoteFriendRequest>((row) {
       final isIncoming = row['target_user_id'] == user.id;
       final person = isIncoming ? row['requester'] : row['target'];
-      final otherUserId =
-          isIncoming ? row['requester_user_id'] : row['target_user_id'];
+      final otherUserId = isIncoming
+          ? row['requester_user_id']
+          : row['target_user_id'];
 
       return RemoteFriendRequest(
         id: row['id'],
@@ -118,11 +119,9 @@ class RemoteFriendRequestsService {
     }
 
     await _client.rpc(
-        'accept_friend_request',
-        params: {
-            'p_request_id': requestId,
-        },
-        );
+      'accept_friend_request',
+      params: {'p_request_id': requestId},
+    );
 
     await _client
         .from('friend_requests')

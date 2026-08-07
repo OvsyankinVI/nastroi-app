@@ -8,9 +8,7 @@ import 'mock_people.dart';
 class PeopleRepository {
   final String userId;
 
-  PeopleRepository({
-    required this.userId,
-  });
+  PeopleRepository({required this.userId});
 
   String get _storageKey => 'people_storage_v1_$userId';
 
@@ -19,9 +17,7 @@ class PeopleRepository {
     final stored = prefs.getString(_storageKey);
 
     if (stored == null || stored.isEmpty) {
-      final defaults = _ensureUniqueMyPublicId(
-        List<Person>.from(mockPeople),
-      );
+      final defaults = _ensureUniqueMyPublicId(List<Person>.from(mockPeople));
 
       await savePeople(defaults);
       return defaults;
@@ -39,9 +35,7 @@ class PeopleRepository {
 
       return migrated;
     } catch (_) {
-      final defaults = _ensureUniqueMyPublicId(
-        List<Person>.from(mockPeople),
-      );
+      final defaults = _ensureUniqueMyPublicId(List<Person>.from(mockPeople));
 
       await savePeople(defaults);
       return defaults;
@@ -51,8 +45,14 @@ class PeopleRepository {
   Future<void> savePeople(List<Person> people) async {
     final prefs = await SharedPreferences.getInstance();
 
+    final persistentPeople = people.where(
+      (person) =>
+          person.sourceType != SourceType.friendRequestIncoming &&
+          person.sourceType != SourceType.friendRequestPending,
+    );
+
     final encoded = jsonEncode(
-      people.map((person) => person.toMap()).toList(),
+      persistentPeople.map((person) => person.toMap()).toList(),
     );
 
     await prefs.setString(_storageKey, encoded);
@@ -64,7 +64,8 @@ class PeopleRepository {
 
       final current = person.publicId.trim();
 
-      final isDefaultPublicId = current.isEmpty ||
+      final isDefaultPublicId =
+          current.isEmpty ||
           current == 'me' ||
           current == 'me000001' ||
           current == 'demo_me' ||
@@ -72,9 +73,7 @@ class PeopleRepository {
 
       if (!isDefaultPublicId) return person;
 
-      return person.copyWith(
-        publicId: 'user_${userId.replaceAll('-', '')}',
-      );
+      return person.copyWith(publicId: 'user_${userId.replaceAll('-', '')}');
     }).toList();
   }
 }

@@ -4,8 +4,5 @@ class PersonAction {
   final String title;
   final IconData icon;
 
-  const PersonAction({
-    required this.title,
-    required this.icon,
-  });
+  const PersonAction({required this.title, required this.icon});
 }

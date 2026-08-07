@@ -16,7 +16,6 @@ class NotificationService {
   static const int _notificationHour = 9;
   static const int _notificationMinute = 0;
 
-
   static Future<void> init() async {
     if (_initialized) return;
 
@@ -29,22 +28,15 @@ class NotificationService {
       requestSoundPermission: true,
     );
 
-    const settings = InitializationSettings(
-      iOS: iosSettings,
-    );
+    const settings = InitializationSettings(iOS: iosSettings);
 
-    await _plugin.initialize(
-  settings: settings,
-);
+    await _plugin.initialize(settings: settings);
 
     await _plugin
         .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>()
-        ?.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
+          IOSFlutterLocalNotificationsPlugin
+        >()
+        ?.requestPermissions(alert: true, badge: true, sound: true);
 
     _initialized = true;
   }
@@ -53,9 +45,7 @@ class NotificationService {
     await init();
   }
 
-  static Future<void> rescheduleCycleNotifications(
-    List<Person> people,
-  ) async {
+  static Future<void> rescheduleCycleNotifications(List<Person> people) async {
     await _plugin.cancelAll();
 
     for (final person in people) {
@@ -107,10 +97,7 @@ class NotificationService {
     );
   }
 
-  static _NextStageChange? _nextStageChange(
-    Person person,
-    DateTime startDate,
-  ) {
+  static _NextStageChange? _nextStageChange(Person person, DateTime startDate) {
     final stages = person.cycleStages;
     if (stages.isEmpty) {
       return null;
@@ -127,11 +114,7 @@ class NotificationService {
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final start = DateTime(
-      startDate.year,
-      startDate.month,
-      startDate.day,
-    );
+    final start = DateTime(startDate.year, startDate.month, startDate.day);
 
     final diff = today.difference(start).inDays;
     final safeDiff = diff < 0 ? 0 : diff;
@@ -148,15 +131,10 @@ class NotificationService {
         final nextDayNumber =
             ((currentDayIndex + daysUntilNextStage) % totalDays) + 1;
 
-        final nextStage = _stageForDay(
-          stages,
-          nextDayNumber,
-        );
+        final nextStage = _stageForDay(stages, nextDayNumber);
 
         return _NextStageChange(
-          date: today.add(
-            Duration(days: daysUntilNextStage),
-          ),
+          date: today.add(Duration(days: daysUntilNextStage)),
           stageTitle: nextStage.title.isNotEmpty
               ? nextStage.title
               : _moodLabel(nextStage.mood),
@@ -167,10 +145,7 @@ class NotificationService {
     return null;
   }
 
-  static CycleStage _stageForDay(
-    List<CycleStage> stages,
-    int dayNumber,
-  ) {
+  static CycleStage _stageForDay(List<CycleStage> stages, int dayNumber) {
     int passed = 0;
 
     for (final stage in stages) {
@@ -210,8 +185,5 @@ class _NextStageChange {
   final DateTime date;
   final String stageTitle;
 
-  const _NextStageChange({
-    required this.date,
-    required this.stageTitle,
-  });
+  const _NextStageChange({required this.date, required this.stageTitle});
 }

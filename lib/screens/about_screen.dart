@@ -73,9 +73,7 @@ class AboutScreen extends StatelessWidget {
         elevation: 0,
         title: Text(
           'Как пользоваться',
-          style: TextStyle(
-            color: AppColors.primaryText(context),
-          ),
+          style: TextStyle(color: AppColors.primaryText(context)),
         ),
       ),
       body: ListView(
@@ -110,30 +108,18 @@ class AboutScreen extends StatelessWidget {
             'Тапать на рекомендации вокруг персонажа и смотреть живые реакции.',
           ),
 
-          _bullet(
-            context,
-            'Редактировать профили людей.',
-          ),
+          _bullet(context, 'Редактировать профили людей.'),
 
           _bullet(
             context,
             'Настраивать циклы жизни: например 3 дня "спокойно", потом 2 дня "устал".',
           ),
 
-          _bullet(
-            context,
-            'Менять активный день цикла вручную.',
-          ),
+          _bullet(context, 'Менять активный день цикла вручную.'),
 
-          _bullet(
-            context,
-            'Делиться профилем через ссылку или QR.',
-          ),
+          _bullet(context, 'Делиться профилем через ссылку или QR.'),
 
-          _bullet(
-            context,
-            'Импортировать чужой профиль.',
-          ),
+          _bullet(context, 'Импортировать чужой профиль.'),
 
           _sectionTitle(context, 'Важно'),
 

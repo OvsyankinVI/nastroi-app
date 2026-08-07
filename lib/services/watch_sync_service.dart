@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../models/person.dart';
@@ -8,7 +9,14 @@ class WatchSyncService {
   static const MethodChannel _channel = MethodChannel('nastroi_watch_sync');
 
   static Future<void> updatePeople(List<Person> people) async {
-    final friends = people.where((p) => p.id != 'me').toList();
+    final friends = people
+        .where(
+          (p) =>
+              p.id != 'me' &&
+              p.sourceType != SourceType.friendRequestIncoming &&
+              p.sourceType != SourceType.friendRequestPending,
+        )
+        .toList();
 
     final data = friends.map((person) {
       final activeStage = _activeStage(person);
@@ -22,22 +30,17 @@ class WatchSyncService {
         'activeStage': activeStage?.title.isNotEmpty == true
             ? activeStage!.title
             : activeStage?.mood.name,
-        'helpfulActions':
-            activeStage?.helpfulActions ?? person.helpfulActions,
-        'avoidActions':
-            activeStage?.avoidActions ?? person.avoidActions,
+        'helpfulActions': activeStage?.helpfulActions ?? person.helpfulActions,
+        'avoidActions': activeStage?.avoidActions ?? person.avoidActions,
       };
     }).toList();
 
     try {
-      await _channel.invokeMethod(
-        'syncPeople',
-        jsonEncode(data),
-      );
+      await _channel.invokeMethod('syncPeople', jsonEncode(data));
 
-      print('Watch sync sent from Flutter: ${data.length} people');
+      if (kDebugMode) debugPrint('Watch sync completed: ${data.length} people');
     } catch (error) {
-      print('Watch sync Flutter error: $error');
+      if (kDebugMode) debugPrint('Watch sync error: $error');
     }
   }
 

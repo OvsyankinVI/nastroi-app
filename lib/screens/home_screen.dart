@@ -1,4 +1,8 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:reorderable_grid/reorderable_grid.dart';
 
 import '../app_colors.dart';
@@ -11,6 +15,7 @@ import 'about_screen.dart';
 import 'create_person_screen.dart';
 import 'import_person_screen.dart';
 import 'person_screen.dart';
+import 'qr_scanner_screen.dart';
 
 import '../services/widget_service.dart';
 import '../services/notification_service.dart';
@@ -24,8 +29,12 @@ import '../services/remote_friends_service.dart';
 import '../services/remote_friend_requests_service.dart';
 
 import '../services/realtime_people_service.dart';
+import '../services/auth_service.dart';
+import '../utils/person_link.dart';
 
 import 'dart:async';
+
+final ValueNotifier<int> homeTabIndex = ValueNotifier<int>(0);
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -55,8 +64,8 @@ class _HomeGridConfig {
 class _HomeScreenState extends State<HomeScreen> {
   late final String userId;
   late final PeopleRepository repository;
-  
-String? _requestAvatarAsset(Person person) {
+
+  String? _requestAvatarAsset(Person person) {
     if (person.sourceType == SourceType.friendRequestIncoming) {
       return 'assets/images/friend_requests/request_incoming.png';
     }
@@ -75,42 +84,47 @@ String? _requestAvatarAsset(Person person) {
   List<Person> people = [];
   List<RemoteFriendRequest> _latestFriendRequests = [];
   bool isLoading = true;
-  String searchQuery = '';
+  bool _isRefreshing = false;
+  String? _loadError;
+  int _selectedTab = 0;
   bool isFabMenuOpen = false;
-  bool isHintDismissed = false;
-List<Person> _requestsAsPeople(List<RemoteFriendRequest> requests) {
-  return requests.map((request) {
-    return Person(
-      id: 'request_${request.id}',
-      publicId: request.otherPublicId,
-      name: request.otherName,
-      gender: GenderType.male,
-      avatarVariant: 0,
-      mood: MoodType.calm,
-      helpfulActions: const [],
-      avoidActions: const [],
-      relationType: RelationType.other,
-      sourceType: request.isIncoming
-          ? SourceType.friendRequestIncoming
-          : SourceType.friendRequestPending,
-    );
-  }).toList();
-}
-
-RemoteFriendRequest? _requestForPerson(Person person) {
-  final requestId = person.id.replaceFirst('request_', '');
-
-  for (final request in _latestFriendRequests) {
-    if (request.id == requestId) return request;
+  Timer? _realtimeDebounce;
+  String searchQuery = '';
+  List<Person> _requestsAsPeople(List<RemoteFriendRequest> requests) {
+    return requests.map((request) {
+      return Person(
+        id: 'request_${request.id}',
+        publicId: request.otherPublicId,
+        name: request.otherName,
+        gender: GenderType.male,
+        avatarVariant: 0,
+        mood: MoodType.calm,
+        helpfulActions: const [],
+        avoidActions: const [],
+        relationType: RelationType.other,
+        sourceType: request.isIncoming
+            ? SourceType.friendRequestIncoming
+            : SourceType.friendRequestPending,
+      );
+    }).toList();
   }
 
-  return null;
-}
+  RemoteFriendRequest? _requestForPerson(Person person) {
+    final requestId = person.id.replaceFirst('request_', '');
 
+    for (final request in _latestFriendRequests) {
+      if (request.id == requestId) return request;
+    }
+
+    return null;
+  }
 
   @override
   void initState() {
     super.initState();
+
+    _selectedTab = homeTabIndex.value;
+    homeTabIndex.addListener(_handleExternalTabChange);
 
     userId = Supabase.instance.client.auth.currentUser!.id;
     repository = PeopleRepository(userId: userId);
@@ -119,119 +133,104 @@ RemoteFriendRequest? _requestForPerson(Person person) {
     _startRealtimeSync();
   }
 
-@override
-void dispose() {
-  final peopleChannel = _peopleRealtimeChannel;
-  if (peopleChannel != null) {
-    RealtimePeopleService.dispose(peopleChannel);
+  @override
+  void dispose() {
+    homeTabIndex.removeListener(_handleExternalTabChange);
+    _realtimeDebounce?.cancel();
+    final peopleChannel = _peopleRealtimeChannel;
+    if (peopleChannel != null) {
+      RealtimePeopleService.dispose(peopleChannel);
+    }
+
+    final requestsChannel = _friendRequestsRealtimeChannel;
+    if (requestsChannel != null) {
+      RealtimePeopleService.dispose(requestsChannel);
+    }
+
+    final linksChannel = _friendLinksRealtimeChannel;
+    if (linksChannel != null) {
+      RealtimePeopleService.dispose(linksChannel);
+    }
+
+    super.dispose();
   }
 
-  final requestsChannel = _friendRequestsRealtimeChannel;
-  if (requestsChannel != null) {
-    RealtimePeopleService.dispose(requestsChannel);
+  void _handleExternalTabChange() {
+    if (mounted && _selectedTab != homeTabIndex.value) {
+      setState(() => _selectedTab = homeTabIndex.value);
+    }
   }
 
-  final linksChannel = _friendLinksRealtimeChannel;
-  if (linksChannel != null) {
-    RealtimePeopleService.dispose(linksChannel);
+  void _startRealtimeSync() {
+    _peopleRealtimeChannel = RealtimePeopleService.subscribeToPeople(
+      onPersonChanged: (publicId) async {
+        final hasThisPerson = people.any(
+          (person) => person.publicId == publicId,
+        );
+
+        if (!hasThisPerson) return;
+
+        _scheduleRealtimeRefresh();
+      },
+    );
+
+    _friendRequestsRealtimeChannel =
+        RealtimePeopleService.subscribeToFriendRequests(
+          userId: userId,
+          onRequestsChanged: () async {
+            _scheduleRealtimeRefresh();
+          },
+        );
+
+    _friendLinksRealtimeChannel = RealtimePeopleService.subscribeToFriendLinks(
+      userId: userId,
+      onFriendLinksChanged: () async {
+        _scheduleRealtimeRefresh();
+      },
+    );
   }
 
-  super.dispose();
-}
+  void _scheduleRealtimeRefresh() {
+    _realtimeDebounce?.cancel();
+    _realtimeDebounce = Timer(const Duration(milliseconds: 450), () {
+      unawaited(_refreshAll());
+    });
+  }
 
-void _startRealtimeSync() {
-  _peopleRealtimeChannel = RealtimePeopleService.subscribeToPeople(
-    onPersonChanged: (publicId) async {
-      final hasThisPerson = people.any(
-        (person) => person.publicId == publicId,
-      );
+  Future<void> _refreshFriendRequests() async {
+    final requests = await RemoteFriendRequestsService.loadMyRequests();
 
-      if (!hasThisPerson) return;
+    if (!mounted) return;
 
-      await _refreshRemoteFriends();
-    },
-  );
-
-  _friendRequestsRealtimeChannel =
-      RealtimePeopleService.subscribeToFriendRequests(
-    userId: userId,
-    onRequestsChanged: () async {
-      await _refreshFriendRequests();
-    },
-  );
-
-  _friendLinksRealtimeChannel = RealtimePeopleService.subscribeToFriendLinks(
-    userId: userId,
-    onFriendLinksChanged: () async {
-      await _refreshRemoteFriends();
-      await _refreshFriendRequests();
-    },
-  );
-}
-
-Future<void> _refreshRemoteFriends() async {
-  final synced = await _syncFromRemoteOnLaunch(people);
-  final normalized = _applyDailyStateToPeople(synced);
-  final requests = await RemoteFriendRequestsService.loadMyRequests();
-
-  if (!mounted) return;
-
-  setState(() {
-    _latestFriendRequests = requests;
-    people = [
-      ...normalized,
-      ..._requestsAsPeople(requests),
-    ];
-  });
-
-  await repository.savePeople(normalized);
-  await WidgetService.updatePeople(normalized);
-  await WatchSyncService.updatePeople(normalized);
-  await NotificationService.rescheduleCycleNotifications(normalized);
-}
-
-Future<void> _refreshFriendRequests() async {
-  final requests = await RemoteFriendRequestsService.loadMyRequests();
-
-  if (!mounted) return;
-
-  setState(() {
-    _latestFriendRequests = requests;
-    people = [
-      ...people.where(
-        (person) =>
-            person.sourceType != SourceType.friendRequestIncoming &&
-            person.sourceType != SourceType.friendRequestPending,
-      ),
-      ..._requestsAsPeople(requests),
-    ];
-  });
-}
+    setState(() {
+      _latestFriendRequests = requests;
+      people = [
+        ...people.where(
+          (person) =>
+              person.sourceType != SourceType.friendRequestIncoming &&
+              person.sourceType != SourceType.friendRequestPending,
+        ),
+        ..._requestsAsPeople(requests),
+      ];
+    });
+  }
 
   Future<void> _init() async {
-    final loaded = await repository.loadPeople();
-    final synced = await _syncFromRemoteOnLaunch(loaded);
-    final normalized = _applyDailyStateToPeople(synced);
-
-final requests = await RemoteFriendRequestsService.loadMyRequests();
-
-setState(() {
-  _latestFriendRequests = requests;
-  people = [
-    ...normalized,
-    ..._requestsAsPeople(requests),
-  ];
-  isLoading = false;
-});
-
-    await repository.savePeople(normalized);
-    final me = normalized.where((p) => p.id == 'me').firstOrNull;
-      if (me != null) {
-        await RemotePeopleService.upsertMyPerson(me);
-      }
-    await WidgetService.updatePeople(normalized);
-    await WatchSyncService.updatePeople(normalized);
-    await NotificationService.rescheduleCycleNotifications(normalized);
+    try {
+      final loaded = _applyDailyStateToPeople(await repository.loadPeople());
+      if (!mounted) return;
+      setState(() {
+        people = loaded;
+        isLoading = false;
+      });
+      await _refreshAll();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        _loadError = 'Не удалось загрузить данные';
+      });
+    }
   }
 
   List<Person> _applyDailyStateToPeople(List<Person> source) {
@@ -239,9 +238,9 @@ setState(() {
     return source.map((person) => person.applyLifeCycleForDate(today)).toList();
   }
 
-Future<void> _persist() async {
-  await repository.savePeople(people);
-  Person? me;
+  Future<void> _persist() async {
+    await repository.savePeople(people);
+    Person? me;
     for (final person in people) {
       if (person.id == 'me') {
         me = person;
@@ -252,10 +251,10 @@ Future<void> _persist() async {
     if (me != null) {
       await RemotePeopleService.upsertMyPerson(me);
     }
-  await WidgetService.updatePeople(people);
-  await WatchSyncService.updatePeople(people);
-  await NotificationService.rescheduleCycleNotifications(people);
-}
+    await WidgetService.updatePeople(people);
+    await WatchSyncService.updatePeople(people);
+    await NotificationService.rescheduleCycleNotifications(people);
+  }
 
   Future<void> _updatePerson(Person updatedPerson) async {
     final normalized = updatedPerson.applyLifeCycleForDate(DateTime.now());
@@ -279,49 +278,54 @@ Future<void> _persist() async {
     await _persist();
   }
 
-Future<List<Person>> _syncFromRemoteOnLaunch(List<Person> localPeople) async {
-  localPeople = localPeople
-      .where(
-        (person) =>
-            person.sourceType != SourceType.friendRequestIncoming &&
-            person.sourceType != SourceType.friendRequestPending,
-      )
-      .toList();
+  Future<List<Person>> _syncFromRemoteOnLaunch(List<Person> localPeople) async {
+    localPeople = localPeople
+        .where(
+          (person) =>
+              person.sourceType != SourceType.friendRequestIncoming &&
+              person.sourceType != SourceType.friendRequestPending,
+        )
+        .toList();
 
-  final remoteMe = await RemotePeopleService.loadMyRemotePerson();
-  final remoteFriends = await RemotePeopleService.loadMyRemoteFriends();
+    final results = await Future.wait<Object?>([
+      RemotePeopleService.loadMyRemotePerson(),
+      RemotePeopleService.loadMyRemoteFriends(),
+    ]).timeout(const Duration(seconds: 12));
+    final remoteMe = results[0] as Person?;
+    final remoteFriends = results[1] as List<Person>;
 
-  final localMe = localPeople.where((person) => person.id == 'me').toList();
-  final me = remoteMe ?? (localMe.isNotEmpty ? localMe.first : null);
+    final localMe = localPeople.where((person) => person.id == 'me').toList();
+    final me = remoteMe ?? (localMe.isNotEmpty ? localMe.first : null);
 
-  final localFriends = localPeople.where((person) => person.id != 'me').toList();
+    final localFriends = localPeople
+        .where((person) => person.id != 'me')
+        .toList();
 
-  final remoteFriendIds = remoteFriends.map((person) => person.publicId).toSet();
+    final remoteFriendIds = remoteFriends
+        .map((person) => person.publicId)
+        .toSet();
 
-  final localOnlyFriends = localFriends
-      .where((person) => !remoteFriendIds.contains(person.publicId))
-      .toList();
+    final localOnlyFriends = localFriends
+        .where((person) => !remoteFriendIds.contains(person.publicId))
+        .toList();
 
-  return [
-    if (me != null) me,
-    ...remoteFriends,
-    ...localOnlyFriends,
-  ];
-}
-
-Future<void> _deletePerson(String personId) async {
-  final person = people.firstWhere((p) => p.id == personId);
-
-  if (person.sourceType == SourceType.imported) {
-    await RemoteFriendsService.removeFriendByPublicId(person.publicId);
+    return [?me, ...remoteFriends, ...localOnlyFriends];
   }
 
-  setState(() {
-    people.removeWhere((p) => p.id == personId);
-  });
+  Future<void> _deletePerson(String personId) async {
+    final person = people.firstWhere((p) => p.id == personId);
 
-  await _persist();
-}
+    if (person.sourceType == SourceType.imported) {
+      await RemoteFriendsService.removeFriendByPublicId(person.publicId);
+    }
+
+    setState(() {
+      people.removeWhere((p) => p.id == personId);
+    });
+
+    await _persist();
+    unawaited(FirebaseAnalytics.instance.logEvent(name: 'friend_removed'));
+  }
 
   Person? _me() {
     try {
@@ -406,179 +410,358 @@ Future<void> _deletePerson(String personId) async {
     }
   }
 
-String _friendImportErrorMessage(Object error) {
-  final text = error.toString().toLowerCase();
+  Future<void> _refreshRemoteFriendsWithRetry() async {
+    for (int attempt = 0; attempt < 4; attempt++) {
+      await _refreshAll();
 
-  if (text.contains('самого себя')) {
-    return 'Нельзя добавить самого себя';
+      final hasPendingRequest = people.any(
+        (person) =>
+            person.sourceType == SourceType.friendRequestIncoming ||
+            person.sourceType == SourceType.friendRequestPending,
+      );
+
+      if (!hasPendingRequest) return;
+
+      await Future.delayed(const Duration(milliseconds: 700));
+    }
   }
 
-  if (text.contains('не найден')) {
-    return 'Профиль не найден';
-  }
-
-  return 'Не удалось добавить человека';
-}
-
-Future<void> _refreshRemoteFriendsWithRetry() async {
-  for (int attempt = 0; attempt < 4; attempt++) {
-    await _refreshRemoteFriends();
-
-    final hasPendingRequest = people.any(
-      (person) =>
-          person.sourceType == SourceType.friendRequestIncoming ||
-          person.sourceType == SourceType.friendRequestPending,
+  Future<void> _openImportPerson({bool linkOnly = false}) async {
+    final imported = await Navigator.push<Person>(
+      context,
+      MaterialPageRoute(builder: (_) => ImportPersonScreen(linkOnly: linkOnly)),
     );
 
-    if (!hasPendingRequest) return;
-
-    await Future.delayed(const Duration(milliseconds: 700));
+    await _handleImportedPerson(imported);
   }
-}
 
-Future<List<Person>> _mergeRemoteFriends(List<Person> localPeople) async {
-  final remoteFriends = await RemotePeopleService.loadMyRemoteFriends();
-
-  if (remoteFriends.isEmpty) return localPeople;
-
-  final me = localPeople.where((p) => p.id == 'me').toList();
-  final localFriends = localPeople.where((p) => p.id != 'me').toList();
-
-  final remoteIds = remoteFriends.map((p) => p.publicId).toSet();
-
-  final localOnlyFriends = localFriends
-      .where((p) => !remoteIds.contains(p.publicId))
-      .toList();
-
-  return [
-    ...me,
-    ...remoteFriends,
-    ...localOnlyFriends,
-  ];
-}
-
-Future<void> _openImportPerson() async {
-  final imported = await Navigator.push<Person>(
-    context,
-    MaterialPageRoute(builder: (_) => const ImportPersonScreen()),
-  );
-
-  if (imported == null) return;
-
-  final alreadyExists = people.any((p) => p.publicId == imported.publicId);
-  if (alreadyExists) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Человек с таким кодом уже есть в списке')),
+  Future<void> _openQrScanner() async {
+    final imported = await Navigator.push<Person>(
+      context,
+      MaterialPageRoute(builder: (_) => const QrScannerScreen()),
     );
-    return;
+    await _handleImportedPerson(imported);
   }
 
-  try {
-    await RemoteFriendRequestsService.createRequestByPublicId(imported.publicId);
-  } catch (error) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(error.toString())),
-    );
-    return;
-  }
+  Future<void> _handleImportedPerson(Person? imported) async {
+    if (imported == null) return;
 
-  if (!mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Заявка отправлена')),
-  );
+    final alreadyExists = people.any((p) => p.publicId == imported.publicId);
+    if (alreadyExists) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Человек с таким кодом уже есть в списке'),
+        ),
+      );
+      return;
+    }
 
-  await _refreshFriendRequests();
-}
-
-Future<void> _refreshAll() async {
-  await _refreshRemoteFriends();
-  await _refreshFriendRequests();
-}
-
-Future<void> _acceptRequest(RemoteFriendRequest request) async {
-  try {
-    await RemoteFriendRequestsService.acceptRequest(request.id);
-
-    await _refreshRemoteFriendsWithRetry();
+    try {
+      await RemoteFriendRequestsService.createRequestByPublicId(
+        imported.publicId,
+      );
+      unawaited(
+        FirebaseAnalytics.instance.logEvent(name: 'friend_request_sent'),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+      return;
+    }
 
     if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Заявка отправлена')));
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Человек добавлен')),
+    await _refreshFriendRequests();
+  }
+
+  Future<void> _refreshAll() async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
+    try {
+      final current = people
+          .where(
+            (p) =>
+                p.sourceType != SourceType.friendRequestIncoming &&
+                p.sourceType != SourceType.friendRequestPending,
+          )
+          .toList();
+      final results = await Future.wait<Object?>([
+        _syncFromRemoteOnLaunch(current),
+        RemoteFriendRequestsService.loadMyRequests(),
+      ]).timeout(const Duration(seconds: 15));
+      final normalized = _applyDailyStateToPeople(results[0] as List<Person>);
+      final requests = results[1] as List<RemoteFriendRequest>;
+      if (!mounted) return;
+      setState(() {
+        _loadError = null;
+        _latestFriendRequests = requests;
+        people = [...normalized, ..._requestsAsPeople(requests)];
+      });
+      unawaited(_persistBackground(normalized));
+    } catch (_) {
+      if (mounted && people.isEmpty) {
+        setState(() => _loadError = 'Не удалось загрузить данные');
+      }
+    } finally {
+      _isRefreshing = false;
+    }
+  }
+
+  Future<void> _persistBackground(List<Person> realPeople) async {
+    await Future.wait<void>(
+      [
+        repository.savePeople(realPeople),
+        WidgetService.updatePeople(realPeople),
+        WatchSyncService.updatePeople(realPeople),
+        NotificationService.rescheduleCycleNotifications(realPeople),
+      ].map(
+        (future) =>
+            future.timeout(const Duration(seconds: 8)).catchError((_) {}),
+      ),
     );
-  } catch (error) {
+    final me = realPeople.where((p) => p.id == 'me').firstOrNull;
+    if (me != null) {
+      await RemotePeopleService.upsertMyPerson(
+        me,
+      ).timeout(const Duration(seconds: 10)).catchError((_) {});
+    }
+  }
+
+  Future<void> _acceptRequest(RemoteFriendRequest request) async {
+    try {
+      await RemoteFriendRequestsService.acceptRequest(request.id);
+      unawaited(
+        FirebaseAnalytics.instance.logEvent(name: 'friend_request_accepted'),
+      );
+
+      await _refreshRemoteFriendsWithRetry();
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Человек добавлен')));
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
+  Future<void> _declineRequest(RemoteFriendRequest request) async {
+    await RemoteFriendRequestsService.declineRequest(request.id);
+    unawaited(
+      FirebaseAnalytics.instance.logEvent(name: 'friend_request_declined'),
+    );
+
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(error.toString())),
-    );
+    setState(() {
+      _latestFriendRequests.removeWhere((r) => r.id == request.id);
+      people.removeWhere((p) => p.id == 'request_${request.id}');
+    });
   }
-}
 
-Future<void> _declineRequest(RemoteFriendRequest request) async {
-  await RemoteFriendRequestsService.declineRequest(request.id);
+  Future<void> _cancelRequest(RemoteFriendRequest request) async {
+    await RemoteFriendRequestsService.cancelRequest(request.id);
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  setState(() {
-    _latestFriendRequests.removeWhere((r) => r.id == request.id);
-    people.removeWhere((p) => p.id == 'request_${request.id}');
-  });
-}
-
-Future<void> _cancelRequest(RemoteFriendRequest request) async {
-  await RemoteFriendRequestsService.cancelRequest(request.id);
-
-  if (!mounted) return;
-
-  setState(() {
-    _latestFriendRequests.removeWhere((r) => r.id == request.id);
-    people.removeWhere((p) => p.id == 'request_${request.id}');
-  });
-}
+    setState(() {
+      _latestFriendRequests.removeWhere((r) => r.id == request.id);
+      people.removeWhere((p) => p.id == 'request_${request.id}');
+    });
+  }
 
   Future<void> _openAddMenu() async {
-    await showModalBottomSheet(
+    unawaited(FirebaseAnalytics.instance.logEvent(name: 'add_person_opened'));
+    await showCupertinoModalPopup<void>(
       context: context,
-      backgroundColor: AppColors.surface(context),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(Icons.person_add_alt_1,
-                    color: AppColors.primaryText(context)),
-                title: Text(
-                  'Создать вручную',
-                  style: TextStyle(color: AppColors.primaryText(context)),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _openCreatePerson();
-                },
-              ),
-              ListTile(
-                leading:
-                    Icon(Icons.qr_code_2, color: AppColors.primaryText(context)),
-                title: Text(
-                  'Импорт по коду',
-                  style: TextStyle(color: AppColors.primaryText(context)),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _openImportPerson();
-                },
-              ),
-            ],
+      builder: (sheetContext) => CupertinoActionSheet(
+        title: const Text('Добавить человека'),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(sheetContext);
+              _openQrScanner();
+            },
+            child: const Text('Сканировать QR-код'),
           ),
-        );
-      },
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(sheetContext);
+              unawaited(
+                FirebaseAnalytics.instance.logEvent(
+                  name: 'public_id_import_started',
+                ),
+              );
+              _openImportPerson();
+            },
+            child: const Text('Ввести код'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(sheetContext);
+              _openImportPerson(linkOnly: true);
+            },
+            child: const Text('Вставить ссылку'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(sheetContext);
+              _openCreatePerson();
+            },
+            child: const Text('Создать вручную'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(sheetContext),
+          child: const Text('Отмена'),
+        ),
+      ),
     );
   }
+
+  Future<void> _confirmLogout() async {
+    final confirmed = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (dialogContext) => CupertinoAlertDialog(
+        title: const Text('Выйти из аккаунта?'),
+        content: const Text(
+          'Локальные данные останутся привязаны к этому аккаунту.',
+        ),
+        actions: [
+          CupertinoDialogAction(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Отмена'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Выйти'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    unawaited(FirebaseAnalytics.instance.logEvent(name: 'logout'));
+    await AuthService.signOut();
+  }
+
+  Widget _buildProfileTab() {
+    final me = _me();
+    if (me == null) return const Center(child: CupertinoActivityIndicator());
+    final link = buildPersonLink(me);
+    return ListView(
+      key: const PageStorageKey('profile_tab'),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
+      children: [
+        Center(
+          child: PersonAvatar(
+            mood: me.mood,
+            gender: me.gender,
+            avatarVariant: me.avatarVariant,
+            size: 150,
+            isMyProfile: true,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          me.name,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppColors.primaryText(context),
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Текущий настрой: ${me.mood.name}',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppColors.secondaryText(context)),
+        ),
+        const SizedBox(height: 20),
+        Center(
+          child: QrImageView(
+            data: link,
+            size: 170,
+            backgroundColor: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 20),
+        _profileAction(
+          CupertinoIcons.smiley,
+          'Изменить настрой',
+          _openQuickMoodPicker,
+        ),
+        _profileAction(
+          CupertinoIcons.pencil,
+          'Редактировать профиль',
+          _openMyProfile,
+        ),
+        _profileAction(CupertinoIcons.share, 'Поделиться профилем', () async {
+          await Clipboard.setData(ClipboardData(text: link));
+          unawaited(
+            FirebaseAnalytics.instance.logEvent(name: 'profile_shared'),
+          );
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Ссылка скопирована')));
+          }
+        }),
+        _profileAction(CupertinoIcons.doc_on_doc, 'Скопировать код', () async {
+          await Clipboard.setData(ClipboardData(text: me.publicId));
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Код скопирован')));
+          }
+        }),
+        _profileAction(
+          CupertinoIcons.info,
+          'О приложении и настройки',
+          () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AboutScreen()),
+          ),
+        ),
+        const SizedBox(height: 28),
+        CupertinoButton(
+          onPressed: _confirmLogout,
+          child: const Text(
+            'Выйти из аккаунта',
+            style: TextStyle(color: CupertinoColors.systemRed),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _profileAction(IconData icon, String title, VoidCallback onTap) =>
+      Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: AppColors.surface(context),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: ListTile(
+          minTileHeight: 52,
+          leading: Icon(icon),
+          title: Text(title),
+          trailing: const Icon(CupertinoIcons.chevron_forward, size: 18),
+          onTap: onTap,
+        ),
+      );
 
   Future<void> _openMyProfile() async {
     final me = _me();
@@ -597,27 +780,6 @@ Future<void> _cancelRequest(RemoteFriendRequest request) async {
         ),
       ),
     );
-  }
-
-  void _toggleFabMenu() {
-    setState(() {
-      isFabMenuOpen = !isFabMenuOpen;
-    });
-  }
-
-  void _closeFabMenu() {
-    if (!isFabMenuOpen) return;
-    setState(() => isFabMenuOpen = false);
-  }
-
-  Future<void> _handleAddPersonAction() async {
-    _closeFabMenu();
-    await _openAddMenu();
-  }
-
-  Future<void> _handleMyMoodAction() async {
-    _closeFabMenu();
-    await _openQuickMoodPicker();
   }
 
   Future<void> _openQuickMoodPicker() async {
@@ -659,14 +821,23 @@ Future<void> _cancelRequest(RemoteFriendRequest request) async {
 
     if (selectedMood == null) return;
 
-    final updatedMe = me.copyWith(
-      manualMoodOverride: selectedMood,
-      manualMoodOverrideDateIso: Person.dateOnlyIso(DateTime.now()),
-      mood: selectedMood,
-    ).applyLifeCycleForDate(DateTime.now());
+    final updatedMe = me
+        .copyWith(
+          manualMoodOverride: selectedMood,
+          manualMoodOverrideDateIso: Person.dateOnlyIso(DateTime.now()),
+          mood: selectedMood,
+        )
+        .applyLifeCycleForDate(DateTime.now());
 
     await _updatePerson(updatedMe);
+    unawaited(FirebaseAnalytics.instance.logEvent(name: 'own_mood_changed'));
   }
+
+  void _toggleFabMenu() => setState(() => isFabMenuOpen = !isFabMenuOpen);
+
+  Future<void> _handleAddPersonAction() => _openAddMenu();
+
+  Future<void> _handleMyMoodAction() => _openQuickMoodPicker();
 
   Widget _moodOption(String text, MoodType mood) {
     return ListTile(
@@ -676,23 +847,6 @@ Future<void> _cancelRequest(RemoteFriendRequest request) async {
       ),
       onTap: () => Navigator.pop(context, mood),
     );
-  }
-
-  Color _glowColor(MoodType mood) {
-    switch (mood) {
-      case MoodType.happy:
-        return const Color(0xFFFFC857);
-      case MoodType.calm:
-        return const Color(0xFF6FCF97);
-      case MoodType.sad:
-        return const Color(0xFF5B8DEF);
-      case MoodType.irritated:
-        return const Color(0xFFFF6B6B);
-      case MoodType.tired:
-        return const Color(0xFF9B7EDE);
-      case MoodType.needsCare:
-        return const Color(0xFFFF8CC8);
-    }
   }
 
   Widget _buildSearchField() {
@@ -710,55 +864,6 @@ Future<void> _cancelRequest(RemoteFriendRequest request) async {
           borderSide: BorderSide.none,
         ),
         contentPadding: const EdgeInsets.symmetric(vertical: 14),
-      ),
-    );
-  }
-
-  Widget _buildHintCard() {
-    final hasSearch = searchQuery.trim().isNotEmpty;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface(context),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border(context)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Text(
-              hasSearch
-                  ? 'Во время поиска порядок не меняется. Очисти поиск, чтобы переставлять карточки.'
-                  : 'Нажми на +, чтобы быстро изменить свой настрой или добавить человека. Зажми карточку и перетащи её в нужное место.',
-              style: TextStyle(
-                color: AppColors.secondaryText(context),
-                fontSize: 14,
-                height: 1.4,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () => setState(() => isHintDismissed = true),
-            child: Container(
-              width: 28,
-              height: 28,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: AppColors.chip(context),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.close,
-                color: AppColors.secondaryText(context),
-                size: 18,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -801,40 +906,6 @@ Future<void> _cancelRequest(RemoteFriendRequest request) async {
     );
   }
 
-  Widget _buildMyAvatarButton() {
-    final me = _me();
-    if (me == null) return const SizedBox.shrink();
-
-    final glowColor = _glowColor(me.mood);
-
-    return GestureDetector(
-      onTap: _openMyProfile,
-      child: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [
-              AppColors.avatarGlow(glowColor, context),
-              AppColors.avatarGlowSoft(glowColor, context),
-              Colors.transparent,
-            ],
-            stops: const [0.20, 0.58, 1.0],
-          ),
-        ),
-        alignment: Alignment.center,
-        child: PersonAvatar(
-          mood: me.mood,
-          gender: me.gender,
-          avatarVariant: me.avatarVariant,
-          size: 38,
-          isMyProfile: true,
-        ),
-      ),
-    );
-  }
-
   Widget _buildMiniActionButton({
     required IconData icon,
     required VoidCallback onTap,
@@ -854,6 +925,8 @@ Future<void> _cancelRequest(RemoteFriendRequest request) async {
     );
   }
 
+  // Kept temporarily for compatibility with existing hero tags; not rendered.
+  // ignore: unused_element
   Widget _buildFabMenu() {
     return SizedBox(
       width: 160,
@@ -918,31 +991,32 @@ Future<void> _cancelRequest(RemoteFriendRequest request) async {
 
     return GestureDetector(
       onTap: () {
+        unawaited(FirebaseAnalytics.instance.logEvent(name: 'person_opened'));
         if (person.sourceType == SourceType.friendRequestIncoming ||
-          person.sourceType == SourceType.friendRequestPending) {
-        final request = _requestForPerson(person);
-        if (request == null) return;
+            person.sourceType == SourceType.friendRequestPending) {
+          final request = _requestForPerson(person);
+          if (request == null) return;
 
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PersonScreen(
-              person: person,
-              friendRequest: request,
-              onPersonUpdated: (_) {},
-              isEditable: false,
-              isMyProfile: false,
-              onPersonDeleted: null,
-              onAcceptRequest: _acceptRequest,
-              onDeclineRequest: _declineRequest,
-              onCancelRequest: _cancelRequest,
-              onTogglePin: null,
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PersonScreen(
+                person: person,
+                friendRequest: request,
+                onPersonUpdated: (_) {},
+                isEditable: false,
+                isMyProfile: false,
+                onPersonDeleted: null,
+                onAcceptRequest: _acceptRequest,
+                onDeclineRequest: _declineRequest,
+                onCancelRequest: _cancelRequest,
+                onTogglePin: null,
+              ),
             ),
-          ),
-        );
+          );
 
-        return;
-      }
+          return;
+        }
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -1035,11 +1109,7 @@ Future<void> _cancelRequest(RemoteFriendRequest request) async {
             width: 300,
             child: AspectRatio(
               aspectRatio: 1,
-              child: _buildPersonTile(
-                person,
-                avatarSize: 190,
-                nameSize: 18,
-              ),
+              child: _buildPersonTile(person, avatarSize: 190, nameSize: 18),
             ),
           ),
         ),
@@ -1080,7 +1150,43 @@ Future<void> _cancelRequest(RemoteFriendRequest request) async {
     final visiblePeople = _visiblePeople();
     final hasSearch = searchQuery.trim().isNotEmpty;
     final isSinglePersonMode = friendsCount == 1;
-    final shouldShowHint = !isSinglePersonMode && !isHintDismissed;
+
+    final peopleTab = isLoading
+        ? const Center(child: CupertinoActivityIndicator(radius: 14))
+        : _loadError != null && people.isEmpty
+        ? Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _loadError!,
+                  style: TextStyle(
+                    color: AppColors.primaryText(context),
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FilledButton(onPressed: _init, child: const Text('Повторить')),
+              ],
+            ),
+          )
+        : RefreshIndicator(
+            onRefresh: _refreshAll,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Column(
+                children: [
+                  if (!isSinglePersonMode && shouldShowSearch) ...[
+                    _buildSearchField(),
+                    const SizedBox(height: 12),
+                  ],
+                  Expanded(
+                    child: _buildPeopleContent(visiblePeople, hasSearch),
+                  ),
+                ],
+              ),
+            ),
+          );
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -1088,89 +1194,68 @@ Future<void> _cancelRequest(RemoteFriendRequest request) async {
         backgroundColor: AppColors.background(context),
         elevation: 0,
         centerTitle: false,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Настрой',
-              style: TextStyle(
-                color: AppColors.primaryText(context),
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const AboutScreen()),
-                );
-              },
-              child: Icon(
-                Icons.info_outline,
-                size: 20,
-                color: AppColors.mutedText(context),
-              ),
-            ),
-          ],
+        title: Text(
+          _selectedTab == 0 ? 'Люди' : 'Профиль',
+          style: TextStyle(
+            color: AppColors.primaryText(context),
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Обновить',
-            onPressed: _refreshAll,
-            icon: Icon(
-              Icons.refresh_rounded,
-              color: AppColors.secondaryText(context),
+          if (_selectedTab == 0)
+            IconButton(
+              tooltip: 'Добавить человека',
+              onPressed: _openAddMenu,
+              icon: Icon(
+                CupertinoIcons.add,
+                color: AppColors.primaryText(context),
+              ),
             ),
-          ),
-          IconButton(
-            tooltip: 'Сменить тему',
-            onPressed: () {
-              appThemeMode.value =
-                  appThemeMode.value == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
-            },
-            icon: Icon(
-              appThemeMode.value == ThemeMode.dark
-                  ? Icons.light_mode_outlined
-                  : Icons.dark_mode_outlined,
-              color: AppColors.secondaryText(context),
+          if (_selectedTab == 1)
+            IconButton(
+              tooltip: 'Сменить тему',
+              onPressed: () =>
+                  appThemeMode.value = appThemeMode.value == ThemeMode.dark
+                  ? ThemeMode.light
+                  : ThemeMode.dark,
+              icon: Icon(
+                appThemeMode.value == ThemeMode.dark
+                    ? CupertinoIcons.sun_max
+                    : CupertinoIcons.moon,
+                color: AppColors.primaryText(context),
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Center(child: _buildMyAvatarButton()),
-          ),
         ],
       ),
-      floatingActionButton: _buildFabMenu(),
-      body: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _closeFabMenu,
-          child: isLoading
-            ? Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.secondaryText(context),
-                ),
-              )
-            : Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: Column(
-                  children: [
-                    if (!isSinglePersonMode && shouldShowSearch) ...[
-                      _buildSearchField(),
-                      const SizedBox(height: 12),
-                    ],
-                    if (shouldShowHint) ...[
-                      _buildHintCard(),
-                      const SizedBox(height: 12),
-                    ],
-                    Expanded(
-                      child: _buildPeopleContent(visiblePeople, hasSearch),
-                    ),
-                  ],
-                ),
-              ),
+      body: IndexedStack(
+        index: _selectedTab,
+        children: [peopleTab, _buildProfileTab()],
+      ),
+      bottomNavigationBar: CupertinoTabBar(
+        currentIndex: _selectedTab,
+        backgroundColor: AppColors.surface(context).withValues(alpha: 0.9),
+        activeColor: Theme.of(context).colorScheme.primary,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.person_2_fill),
+            label: 'Люди',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(CupertinoIcons.person_crop_circle_fill),
+            label: 'Профиль',
+          ),
+        ],
+        onTap: (index) {
+          if (index == _selectedTab) return;
+          setState(() => _selectedTab = index);
+          homeTabIndex.value = index;
+          unawaited(
+            FirebaseAnalytics.instance.logEvent(
+              name: index == 0 ? 'people_tab_opened' : 'profile_tab_opened',
+            ),
+          );
+        },
       ),
     );
   }

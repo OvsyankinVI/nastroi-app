@@ -107,95 +107,95 @@ class PersonAvatar extends StatelessWidget {
     }
   }
 
-Widget _buildAvatarFigure() {
-  if (customAsset != null) {
+  Widget _buildAvatarFigure() {
+    if (customAsset != null) {
+      return Image.asset(
+        customAsset!,
+        width: size * 0.9,
+        height: size * 0.9,
+        fit: BoxFit.contain,
+      );
+    }
+
     return Image.asset(
-      customAsset!,
-      width: size * 0.9,
-      height: size * 0.9,
+      _primaryAssetPath(),
+      width: size * 0.88,
+      height: size * 0.88,
       fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        return Image.asset(
+          _secondaryAssetPath(),
+          width: size * 0.88,
+          height: size * 0.88,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            return _AvatarFigure(
+              mood: mood,
+              size: size,
+              bodyColor: Colors.white,
+              bodyTilt: _bodyTilt(mood),
+              headTilt: _headTilt(mood),
+              gender: gender,
+              avatarVariant: avatarVariant,
+            );
+          },
+        );
+      },
     );
   }
 
-  return Image.asset(
-    _primaryAssetPath(),
-    width: size * 0.88,
-    height: size * 0.88,
-    fit: BoxFit.contain,
-    errorBuilder: (_, __, ___) {
-      return Image.asset(
-        _secondaryAssetPath(),
-        width: size * 0.88,
-        height: size * 0.88,
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) {
-          return _AvatarFigure(
-            mood: mood,
-            size: size,
-            bodyColor: Colors.white,
-            bodyTilt: _bodyTilt(mood),
-            headTilt: _headTilt(mood),
-            gender: gender,
-            avatarVariant: avatarVariant,
-          );
-        },
-      );
-    },
-  );
-}
-
   @override
-Widget build(BuildContext context) {
-  final bg = _backgroundColor(mood);
+  Widget build(BuildContext context) {
+    final bg = _backgroundColor(mood);
 
-  return SizedBox(
-    width: size,
-    height: size,
-    child: Stack(
-      alignment: Alignment.center,
-      clipBehavior: Clip.none,
-      children: [
-        ImageFiltered(
-          imageFilter: ImageFilter.blur(
-            sigmaX: size * 0.18,
-            sigmaY: size * 0.18,
-          ),
-          child: Container(
-            width: size * 1.04,
-            height: size * 1.04,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  bg.withValues(alpha: 0.88),
-                  bg.withValues(alpha: 0.34),
-                  bg.withValues(alpha: 0.10),
-                  Colors.transparent,
-                ],
-                stops: const [0.14, 0.42, 0.72, 1.0],
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          ImageFiltered(
+            imageFilter: ImageFilter.blur(
+              sigmaX: size * 0.18,
+              sigmaY: size * 0.18,
+            ),
+            child: Container(
+              width: size * 1.04,
+              height: size * 1.04,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    bg.withValues(alpha: 0.88),
+                    bg.withValues(alpha: 0.34),
+                    bg.withValues(alpha: 0.10),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.14, 0.42, 0.72, 1.0],
+                ),
               ),
             ),
           ),
-        ),
-        ImageFiltered(
-          imageFilter: ImageFilter.blur(
-            sigmaX: size * 0.08,
-            sigmaY: size * 0.08,
-          ),
-          child: Container(
-            width: size * 0.76,
-            height: size * 0.76,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: bg.withValues(alpha: 0.12),
+          ImageFiltered(
+            imageFilter: ImageFilter.blur(
+              sigmaX: size * 0.08,
+              sigmaY: size * 0.08,
+            ),
+            child: Container(
+              width: size * 0.76,
+              height: size * 0.76,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: bg.withValues(alpha: 0.12),
+              ),
             ),
           ),
-        ),
-        _buildAvatarFigure(),
-      ],
-    ),
-  );
-}
+          _buildAvatarFigure(),
+        ],
+      ),
+    );
+  }
 }
 
 class _AvatarFigure extends StatelessWidget {
@@ -582,9 +582,7 @@ class _HairPainter extends CustomPainter {
 class _SkirtPainter extends CustomPainter {
   final Color color;
 
-  const _SkirtPainter({
-    required this.color,
-  });
+  const _SkirtPainter({required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -609,10 +607,7 @@ class _FacePainter extends CustomPainter {
   final MoodType mood;
   final int variant;
 
-  const _FacePainter({
-    required this.mood,
-    required this.variant,
-  });
+  const _FacePainter({required this.mood, required this.variant});
 
   @override
   void paint(Canvas canvas, Size size) {

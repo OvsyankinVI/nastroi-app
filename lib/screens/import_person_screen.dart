@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../app_colors.dart';
-import '../models/person.dart';
 import '../services/remote_people_service.dart';
 import '../utils/person_link.dart';
 
 class ImportPersonScreen extends StatefulWidget {
-  const ImportPersonScreen({super.key});
+  const ImportPersonScreen({super.key, this.linkOnly = false});
+
+  final bool linkOnly;
 
   @override
   State<ImportPersonScreen> createState() => _ImportPersonScreenState();
@@ -78,7 +79,7 @@ class _ImportPersonScreenState extends State<ImportPersonScreen> {
 
     if (raw.isEmpty) {
       setState(() {
-        errorText = 'Вставь ссылку или код';
+        errorText = widget.linkOnly ? 'Вставь ссылку' : 'Введи код';
       });
       return;
     }
@@ -92,8 +93,9 @@ class _ImportPersonScreenState extends State<ImportPersonScreen> {
       final publicId = tryParsePublicIdFromRaw(raw);
 
       if (publicId != null) {
-        final person =
-            await RemotePeopleService.findPublicPersonByPublicId(publicId);
+        final person = await RemotePeopleService.findPublicPersonByPublicId(
+          publicId,
+        );
 
         if (!mounted) return;
 
@@ -140,7 +142,7 @@ class _ImportPersonScreenState extends State<ImportPersonScreen> {
         backgroundColor: AppColors.background(context),
         elevation: 0,
         title: Text(
-          'Импорт по коду',
+          widget.linkOnly ? 'Вставить ссылку' : 'Ввести код',
           style: TextStyle(color: AppColors.primaryText(context)),
         ),
       ),
@@ -148,7 +150,9 @@ class _ImportPersonScreenState extends State<ImportPersonScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Вставь ссылку или код, который тебе прислали. Мы распознаем профиль и добавим человека в список.',
+            widget.linkOnly
+                ? 'Вставь ссылку на профиль «Настрой».'
+                : 'Введи публичный код профиля.',
             style: TextStyle(
               color: AppColors.secondaryText(context),
               fontSize: 15,
@@ -158,10 +162,12 @@ class _ImportPersonScreenState extends State<ImportPersonScreen> {
           const SizedBox(height: 20),
           TextField(
             controller: _codeController,
-            minLines: 6,
-            maxLines: 10,
+            minLines: widget.linkOnly ? 4 : 1,
+            maxLines: widget.linkOnly ? 6 : 1,
             style: TextStyle(color: AppColors.primaryText(context)),
-            decoration: _decoration('Ссылка или код профиля'),
+            decoration: _decoration(
+              widget.linkOnly ? 'Ссылка на профиль' : 'Публичный ID',
+            ),
           ),
           const SizedBox(height: 24),
           _primaryButton(

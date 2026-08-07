@@ -22,6 +22,7 @@ dependencies:
   firebase_messaging: ^16.3.0
   firebase_analytics: ^12.4.2
   firebase_crashlytics: ^5.2.3
+  mobile_scanner: ^7.4.0
 
 dev_dependencies:
   flutter_test:
@@ -35,6 +36,7 @@ flutter:
   assets:
     - assets/avatars/
     - assets/images/friend_requests/
+    - assets/icon/app_icon.png
 
 
 flutter_launcher_icons:
@@ -42,4 +44,3 @@ flutter_launcher_icons:
   android: true
   image_path: "assets/icon/app_icon.png"
   remove_alpha_ios: true
-    

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -15,13 +16,7 @@ import '../services/auth_service.dart';
 
 import '../services/remote_friend_requests_service.dart';
 
-enum ReactionType {
-  warm,
-  communication,
-  calm,
-  negative,
-  toxic,
-}
+enum ReactionType { warm, communication, calm, negative, toxic }
 
 class PersonScreen extends StatefulWidget {
   final Person person;
@@ -82,8 +77,8 @@ class _PersonScreenState extends State<PersonScreen>
   bool isFabMenuOpen = false;
 
   bool get _isFriendRequest =>
-    currentPerson.sourceType == SourceType.friendRequestIncoming ||
-    currentPerson.sourceType == SourceType.friendRequestPending;
+      currentPerson.sourceType == SourceType.friendRequestIncoming ||
+      currentPerson.sourceType == SourceType.friendRequestPending;
 
   bool get _isIncomingRequest =>
       currentPerson.sourceType == SourceType.friendRequestIncoming;
@@ -104,97 +99,97 @@ class _PersonScreenState extends State<PersonScreen>
   }
 
   Future<void> _acceptIncomingRequest() async {
-  final request = widget.friendRequest;
-  if (request == null || widget.onAcceptRequest == null) return;
+    final request = widget.friendRequest;
+    if (request == null || widget.onAcceptRequest == null) return;
 
-  await widget.onAcceptRequest!(request);
+    await widget.onAcceptRequest!(request);
 
-  if (!mounted) return;
-  Navigator.of(context).pop();
-}
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
 
-Future<void> _declineIncomingRequest() async {
-  final request = widget.friendRequest;
-  if (request == null || widget.onDeclineRequest == null) return;
+  Future<void> _declineIncomingRequest() async {
+    final request = widget.friendRequest;
+    if (request == null || widget.onDeclineRequest == null) return;
 
-  await widget.onDeclineRequest!(request);
+    await widget.onDeclineRequest!(request);
 
-  if (!mounted) return;
-  Navigator.of(context).pop();
-}
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
 
-Future<void> _cancelPendingRequest() async {
-  final request = widget.friendRequest;
-  if (request == null || widget.onCancelRequest == null) return;
+  Future<void> _cancelPendingRequest() async {
+    final request = widget.friendRequest;
+    if (request == null || widget.onCancelRequest == null) return;
 
-  await widget.onCancelRequest!(request);
+    await widget.onCancelRequest!(request);
 
-  if (!mounted) return;
-  Navigator.of(context).pop();
-}
+    if (!mounted) return;
+    Navigator.of(context).pop();
+  }
 
-Widget _buildFriendRequestInfo() {
-  if (!_isFriendRequest) return const SizedBox.shrink();
+  Widget _buildFriendRequestInfo() {
+    if (!_isFriendRequest) return const SizedBox.shrink();
 
-  final title = _isIncomingRequest
-      ? '${currentPerson.name} хочет добавить тебя'
-      : '${currentPerson.name} ещё думает';
+    final title = _isIncomingRequest
+        ? '${currentPerson.name} хочет добавить тебя'
+        : '${currentPerson.name} ещё думает';
 
-  final subtitle = _isIncomingRequest
-      ? 'Разреши добавление, чтобы вы оба появились друг у друга в списке.'
-      : 'Заявка отправлена. После подтверждения человек появится в списке друзей.';
+    final subtitle = _isIncomingRequest
+        ? 'Разреши добавление, чтобы вы оба появились друг у друга в списке.'
+        : 'Заявка отправлена. После подтверждения человек появится в списке друзей.';
 
-  return Padding(
-    padding: const EdgeInsets.fromLTRB(8, 18, 8, 0),
-    child: Column(
-      children: [
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.primaryText(context),
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 18, 8, 0),
+      child: Column(
+        children: [
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.primaryText(context),
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          subtitle,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.secondaryText(context),
-            fontSize: 14,
-            height: 1.4,
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.secondaryText(context),
+              fontSize: 14,
+              height: 1.4,
+            ),
           ),
-        ),
-        if (_isIncomingRequest) ...[
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: _acceptIncomingRequest,
-                  icon: const Icon(Icons.check_rounded),
-                  label: const Text('Добавить'),
+          if (_isIncomingRequest) ...[
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _acceptIncomingRequest,
+                    icon: const Icon(Icons.check_rounded),
+                    label: const Text('Добавить'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _declineIncomingRequest,
-                  icon: const Icon(Icons.close_rounded),
-                  label: const Text('Отклонить'),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _declineIncomingRequest,
+                    icon: const Icon(Icons.close_rounded),
+                    label: const Text('Отклонить'),
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
-      ],
-    ),
-  );
-}
+      ),
+    );
+  }
 
-    void _toggleFabMenu() {
+  void _toggleFabMenu() {
     setState(() {
       isFabMenuOpen = !isFabMenuOpen;
     });
@@ -205,168 +200,200 @@ Widget _buildFriendRequestInfo() {
     setState(() => isFabMenuOpen = false);
   }
 
-Widget _buildMiniActionButton({
-  required IconData icon,
-  required VoidCallback onTap,
-  required String heroTag,
-  Color? iconColor,
-}) {
-  return SizedBox(
-    width: 56,
-    height: 56,
-    child: FloatingActionButton(
-      heroTag: heroTag,
-      mini: true,
-      backgroundColor: AppColors.surface(context),
-      elevation: 0,
-      onPressed: onTap,
-      child: Icon(
-        icon,
-        color: iconColor ?? AppColors.primaryText(context),
-      ),
-    ),
-  );
-}
-
-Widget _buildFabMenu() {
-  final actions = <Widget>[];
-
-  if (!_isFriendRequest && widget.isEditable) {
-    actions.add(
-      _buildMiniActionButton(
-        heroTag: 'person_edit_action',
-        icon: Icons.edit_outlined,
-        onTap: () {
-          _closeFabMenu();
-          _openEditScreen();
-        },
+  Widget _buildMiniActionButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    required String heroTag,
+    Color? iconColor,
+  }) {
+    return SizedBox(
+      width: 56,
+      height: 56,
+      child: FloatingActionButton(
+        heroTag: heroTag,
+        mini: true,
+        backgroundColor: AppColors.surface(context),
+        elevation: 0,
+        onPressed: onTap,
+        child: Icon(icon, color: iconColor ?? AppColors.primaryText(context)),
       ),
     );
   }
 
-  if (!_isFriendRequest) {
-    actions.add(
-      _buildMiniActionButton(
-        heroTag: 'person_share_action',
-        icon: Icons.share_outlined,
-        onTap: () {
-          _closeFabMenu();
-          _showShareDialog();
-        },
-      ),
-    );
-  }
+  // ignore: unused_element
+  Widget _buildLegacyFabMenu() {
+    final actions = <Widget>[];
 
-  if (_isPendingRequest) {
-    actions.add(
-      _buildMiniActionButton(
-        heroTag: 'person_cancel_request_action',
-        icon: Icons.delete_outline,
-        iconColor: Colors.redAccent,
-        onTap: () {
-          _closeFabMenu();
-          _cancelPendingRequest();
-        },
-      ),
-    );
-  }
+    if (!_isFriendRequest && widget.isEditable) {
+      actions.add(
+        _buildMiniActionButton(
+          heroTag: 'person_edit_action',
+          icon: Icons.edit_outlined,
+          onTap: () {
+            _closeFabMenu();
+            _openEditScreen();
+          },
+        ),
+      );
+    }
 
-  if (!_isFriendRequest && widget.onPersonDeleted != null) {
-    actions.add(
-      _buildMiniActionButton(
-        heroTag: 'person_delete_action',
-        icon: Icons.delete_outline,
-        iconColor: Colors.redAccent,
-        onTap: () {
-          _closeFabMenu();
-          _confirmDelete();
-        },
-      ),
-    );
-  }
+    if (!_isFriendRequest) {
+      actions.add(
+        _buildMiniActionButton(
+          heroTag: 'person_share_action',
+          icon: Icons.share_outlined,
+          onTap: () {
+            _closeFabMenu();
+            _showShareDialog();
+          },
+        ),
+      );
+    }
 
-  if (!_isFriendRequest && widget.isMyProfile) {
-    actions.add(
-      _buildMiniActionButton(
-        heroTag: 'person_logout_action',
-        icon: Icons.logout_rounded,
-        iconColor: Colors.redAccent,
-        onTap: () {
-          _closeFabMenu();
-          _confirmLogout();
-        },
-      ),
-    );
-  }
+    if (_isPendingRequest) {
+      actions.add(
+        _buildMiniActionButton(
+          heroTag: 'person_cancel_request_action',
+          icon: Icons.delete_outline,
+          iconColor: Colors.redAccent,
+          onTap: () {
+            _closeFabMenu();
+            _cancelPendingRequest();
+          },
+        ),
+      );
+    }
 
-  if (actions.isEmpty) {
-    return const SizedBox.shrink();
-  }
+    if (!_isFriendRequest && widget.onPersonDeleted != null) {
+      actions.add(
+        _buildMiniActionButton(
+          heroTag: 'person_delete_action',
+          icon: Icons.delete_outline,
+          iconColor: Colors.redAccent,
+          onTap: () {
+            _closeFabMenu();
+            _confirmDelete();
+          },
+        ),
+      );
+    }
 
-  return SizedBox(
-    width: 72,
-    height: 72 + (actions.length * 64),
-    child: Stack(
-      alignment: Alignment.bottomRight,
-      children: [
-        for (int i = 0; i < actions.length; i++)
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 180),
-            curve: Curves.easeOut,
-            right: 0,
-            bottom: isFabMenuOpen ? 72.0 + (i * 64.0) : 0,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 140),
-              opacity: isFabMenuOpen ? 1 : 0,
-              child: IgnorePointer(
-                ignoring: !isFabMenuOpen,
-                child: actions[i],
+    if (!_isFriendRequest && widget.isMyProfile) {
+      actions.add(
+        _buildMiniActionButton(
+          heroTag: 'person_logout_action',
+          icon: Icons.logout_rounded,
+          iconColor: Colors.redAccent,
+          onTap: () {
+            _closeFabMenu();
+            _confirmLogout();
+          },
+        ),
+      );
+    }
+
+    if (actions.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return SizedBox(
+      width: 72,
+      height: 72 + (actions.length * 64),
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        children: [
+          for (int i = 0; i < actions.length; i++)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              right: 0,
+              bottom: isFabMenuOpen ? 72.0 + (i * 64.0) : 0,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 140),
+                opacity: isFabMenuOpen ? 1 : 0,
+                child: IgnorePointer(
+                  ignoring: !isFabMenuOpen,
+                  child: actions[i],
+                ),
               ),
             ),
+          FloatingActionButton(
+            heroTag: 'person_main_actions',
+            backgroundColor: AppColors.chip(context),
+            elevation: 0,
+            onPressed: _toggleFabMenu,
+            child: Icon(
+              Icons.more_horiz_rounded,
+              color: AppColors.primaryText(context),
+            ),
           ),
-        FloatingActionButton(
-          heroTag: 'person_main_actions',
-          backgroundColor: AppColors.chip(context),
-          elevation: 0,
-          onPressed: _toggleFabMenu,
-          child: Icon(
-            Icons.more_horiz_rounded,
-            color: AppColors.primaryText(context),
-          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFabMenu() {
+    if (_isFriendRequest && !_isPendingRequest) return const SizedBox.shrink();
+    return FloatingActionButton.small(
+      heroTag: 'person_main_actions',
+      backgroundColor: AppColors.chip(context),
+      elevation: 0,
+      tooltip: 'Действия',
+      onPressed: _showPersonActions,
+      child: Icon(
+        CupertinoIcons.ellipsis,
+        color: AppColors.primaryText(context),
+      ),
+    );
+  }
+
+  Future<void> _showPersonActions() async {
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (sheetContext) => CupertinoActionSheet(
+        title: Text(currentPerson.name),
+        actions: [
+          if (!_isFriendRequest && widget.isEditable)
+            CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                _openEditScreen();
+              },
+              child: const Text('Редактировать'),
+            ),
+          if (!_isFriendRequest)
+            CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                _showShareDialog();
+              },
+              child: const Text('Поделиться'),
+            ),
+          if (_isPendingRequest)
+            CupertinoActionSheetAction(
+              isDestructiveAction: true,
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                _cancelPendingRequest();
+              },
+              child: const Text('Отменить заявку'),
+            ),
+          if (!_isFriendRequest && widget.onPersonDeleted != null)
+            CupertinoActionSheetAction(
+              isDestructiveAction: true,
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                _confirmDelete();
+              },
+              child: const Text('Удалить'),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.pop(sheetContext),
+          child: const Text('Отмена'),
         ),
-      ],
-    ),
-  );
-}
-
-double _fabOffsetX({
-  required int index,
-  required int count,
-  required double radius,
-  required double startAngle,
-  required double endAngle,
-}) {
-  if (count == 1) return 0;
-
-  final angle = startAngle + (endAngle - startAngle) * (index / (count - 1));
-  final radians = angle * math.pi / 180;
-
-  return -math.cos(radians) * radius;
-}
-
-  double _fabOffsetY({
-    required int index,
-    required int count,
-    required double radius,
-    required double startAngle,
-    required double endAngle,
-  }) {
-    if (count == 1) return radius;
-
-    final angle = startAngle + (endAngle - startAngle) * (index / (count - 1));
-    final radians = angle * math.pi / 180;
-
-    return -math.sin(radians) * radius;
+      ),
+    );
   }
 
   Color? _reactionOverlayColor;
@@ -377,53 +404,49 @@ double _fabOffsetX({
 
   List<_FlyingReactionEmoji> _flyingEmojis = [];
 
-Future<void> _confirmLogout() async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) {
-      return AlertDialog(
-        backgroundColor: AppColors.card(context),
-        title: Text(
-          'Выйти из аккаунта?',
-          style: TextStyle(
-            color: AppColors.primaryText(context),
+  Future<void> _confirmLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.card(context),
+          title: Text(
+            'Выйти из аккаунта?',
+            style: TextStyle(color: AppColors.primaryText(context)),
           ),
-        ),
-        content: Text(
-          'Ты точно хочешь выйти?',
-          style: TextStyle(
-            color: AppColors.secondaryText(context),
+          content: Text(
+            'Ты точно хочешь выйти?',
+            style: TextStyle(color: AppColors.secondaryText(context)),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Отмена'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Ок'),
-          ),
-        ],
-      );
-    },
-  );
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Отмена'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Ок'),
+            ),
+          ],
+        );
+      },
+    );
 
-  if (confirmed == true) {
-    await AuthService.signOut();
+    if (confirmed == true) {
+      await AuthService.signOut();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    Navigator.of(context).popUntil((route) => route.isFirst);
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
   }
-}
 
   @override
   void initState() {
     _cycleDaysController = ScrollController();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollCycleDaysToActive();
-      });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollCycleDaysToActive();
+    });
     super.initState();
     currentPerson = widget.person;
 
@@ -465,26 +488,27 @@ Future<void> _confirmLogout() async {
     super.dispose();
     _cycleDaysController.dispose();
   }
+
   void _scrollCycleDaysToActive() {
-  if (!_cycleDaysController.hasClients) return;
+    if (!_cycleDaysController.hasClients) return;
 
-  final totalDays = _totalCycleDays;
-  if (totalDays <= 0) return;
+    final totalDays = _totalCycleDays;
+    if (totalDays <= 0) return;
 
-  final activeIndex = _activeCycleDay - 1;
-  const itemWidth = 40.0;
-  const separatorWidth = 7.0;
-  final screenWidth = MediaQuery.of(context).size.width;
+    final activeIndex = _activeCycleDay - 1;
+    const itemWidth = 40.0;
+    const separatorWidth = 7.0;
+    final screenWidth = MediaQuery.of(context).size.width;
 
-  final targetOffset =
-      activeIndex * (itemWidth + separatorWidth) - screenWidth / 2 + itemWidth / 2;
+    final targetOffset =
+        activeIndex * (itemWidth + separatorWidth) -
+        screenWidth / 2 +
+        itemWidth / 2;
 
-  final maxOffset = _cycleDaysController.position.maxScrollExtent;
+    final maxOffset = _cycleDaysController.position.maxScrollExtent;
 
-  _cycleDaysController.jumpTo(
-    targetOffset.clamp(0.0, maxOffset),
-  );
-}
+    _cycleDaysController.jumpTo(targetOffset.clamp(0.0, maxOffset));
+  }
 
   DateTime _dateOnly(DateTime date) {
     return DateTime(date.year, date.month, date.day);
@@ -497,25 +521,24 @@ Future<void> _confirmLogout() async {
     );
   }
 
-CycleStage? get _activeCycleStage {
-  if (!currentPerson.lifeCycleEnabled ||
-      currentPerson.cycleStages.isEmpty) {
+  CycleStage? get _activeCycleStage {
+    if (!currentPerson.lifeCycleEnabled || currentPerson.cycleStages.isEmpty) {
+      return null;
+    }
+
+    final activeDay = _activeCycleDay;
+    int passed = 0;
+
+    for (final stage in currentPerson.cycleStages) {
+      passed += stage.durationDays;
+
+      if (activeDay <= passed) {
+        return stage;
+      }
+    }
+
     return null;
   }
-
-  final activeDay = _activeCycleDay;
-  int passed = 0;
-
-  for (final stage in currentPerson.cycleStages) {
-    passed += stage.durationDays;
-
-    if (activeDay <= passed) {
-      return stage;
-    }
-  }
-
-  return null;
-}
 
   int get _activeCycleDay {
     final totalDays = _totalCycleDays;
@@ -612,58 +635,53 @@ CycleStage? get _activeCycleStage {
   }
 
   Widget _buildActiveCycleStageLabel() {
-  final stage = _activeCycleStage;
+    final stage = _activeCycleStage;
 
-  if (stage == null) {
-    return const SizedBox.shrink();
-  }
+    if (stage == null) {
+      return const SizedBox.shrink();
+    }
 
-  final accent = _glowColor(stage.mood);
+    final accent = _glowColor(stage.mood);
 
-  final title = stage.title.trim().isNotEmpty
-      ? stage.title
-      : _moodTitle(stage.mood);
+    final title = stage.title.trim().isNotEmpty
+        ? stage.title
+        : _moodTitle(stage.mood);
 
-  return Padding(
-    padding: const EdgeInsets.only(top: 12),
-    child: Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 10,
-      ),
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: accent.withValues(alpha: 0.25),
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accent.withValues(alpha: 0.25)),
         ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Сейчас этап: ',
-            style: TextStyle(
-              color: AppColors.secondaryText(context),
-              fontSize: 14,
-            ),
-          ),
-          Flexible(
-            child: Text(
-              title,
-              overflow: TextOverflow.ellipsis,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Сейчас этап: ',
               style: TextStyle(
-                color: accent,
+                color: AppColors.secondaryText(context),
                 fontSize: 14,
-                fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-        ],
+            Flexible(
+              child: Text(
+                title,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: accent,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   _ParsedEmojiAction _parseEmojiAction(
     String value, {
@@ -681,10 +699,7 @@ CycleStage? get _activeCycleStage {
       }
     }
 
-    return _ParsedEmojiAction(
-      emoji: defaultEmoji,
-      text: trimmed,
-    );
+    return _ParsedEmojiAction(emoji: defaultEmoji, text: trimmed);
   }
 
   String _visibleActionText(String value) {
@@ -774,7 +789,8 @@ CycleStage? get _activeCycleStage {
       _shakeController.forward(from: 0);
     }
 
-    final isPositive = type == ReactionType.warm ||
+    final isPositive =
+        type == ReactionType.warm ||
         type == ReactionType.communication ||
         type == ReactionType.calm;
 
@@ -790,40 +806,45 @@ CycleStage? get _activeCycleStage {
           _reactionScale = 1.14;
           _reactionRotation = -0.010;
           _reactionVerticalOffset = -4;
-          _reactionOverlayColor =
-              const Color(0xFFFF7EB6).withValues(alpha: 0.28);
+          _reactionOverlayColor = const Color(
+            0xFFFF7EB6,
+          ).withValues(alpha: 0.28);
           break;
 
         case ReactionType.communication:
           _reactionScale = 1.10;
           _reactionRotation = 0.0;
           _reactionVerticalOffset = -2;
-          _reactionOverlayColor =
-              const Color(0xFF67B7FF).withValues(alpha: 0.22);
+          _reactionOverlayColor = const Color(
+            0xFF67B7FF,
+          ).withValues(alpha: 0.22);
           break;
 
         case ReactionType.calm:
           _reactionScale = 1.06;
           _reactionRotation = 0.0;
           _reactionVerticalOffset = -1;
-          _reactionOverlayColor =
-              const Color(0xFF6FCF97).withValues(alpha: 0.18);
+          _reactionOverlayColor = const Color(
+            0xFF6FCF97,
+          ).withValues(alpha: 0.18);
           break;
 
         case ReactionType.negative:
           _reactionScale = 1.04;
           _reactionRotation = 0.018;
           _reactionVerticalOffset = 2;
-          _reactionOverlayColor =
-              const Color(0xFFFF6B6B).withValues(alpha: 0.24);
+          _reactionOverlayColor = const Color(
+            0xFFFF6B6B,
+          ).withValues(alpha: 0.24);
           break;
 
         case ReactionType.toxic:
           _reactionScale = 1.02;
           _reactionRotation = 0.026;
           _reactionVerticalOffset = 4;
-          _reactionOverlayColor =
-              const Color(0xFFFF3B30).withValues(alpha: 0.34);
+          _reactionOverlayColor = const Color(
+            0xFFFF3B30,
+          ).withValues(alpha: 0.34);
           break;
       }
     });
@@ -840,40 +861,37 @@ CycleStage? get _activeCycleStage {
     });
   }
 
-String _recommendationEmoji(String text, bool positive) {
-  final parsed = _parseEmojiAction(
-    text,
-    defaultEmoji: positive ? '✨' : '⚠️',
-  );
+  String _recommendationEmoji(String text, bool positive) {
+    final parsed = _parseEmojiAction(text, defaultEmoji: positive ? '✨' : '⚠️');
 
-  if (text.trim().startsWith('emoji::')) {
-    return parsed.emoji;
+    if (text.trim().startsWith('emoji::')) {
+      return parsed.emoji;
+    }
+
+    final value = parsed.text.trim();
+
+    const map = {
+      'Обнять': '🤗',
+      'Написать': '💬',
+      'Позвонить': '📞',
+      'Подарок': '🎁',
+      'Сладкое': '🍬',
+      'Прогулка': '🚶',
+      'Тишина': '🤫',
+      'Поддержка': '🫶',
+
+      'Спорить': '⚡',
+      'Давить': '🧱',
+      'Игнорировать': '🚫',
+      'Шутить': '🙄',
+      'Торопить': '⏩',
+      'Критиковать': '❗',
+      'Шуметь': '🔊',
+      'Навязываться': '⛔',
+    };
+
+    return map[value] ?? (positive ? '✨' : '⚠️');
   }
-
-  final value = parsed.text.trim();
-
-  const map = {
-    'Обнять': '🤗',
-    'Написать': '💬',
-    'Позвонить': '📞',
-    'Подарок': '🎁',
-    'Сладкое': '🍬',
-    'Прогулка': '🚶',
-    'Тишина': '🤫',
-    'Поддержка': '🫶',
-
-    'Спорить': '⚡',
-    'Давить': '🧱',
-    'Игнорировать': '🚫',
-    'Шутить': '🙄',
-    'Торопить': '⏩',
-    'Критиковать': '❗',
-    'Шуметь': '🔊',
-    'Навязываться': '⛔',
-  };
-
-  return map[value] ?? (positive ? '✨' : '⚠️');
-}
 
   Color _glowColor(MoodType mood) {
     switch (mood) {
@@ -936,19 +954,13 @@ String _recommendationEmoji(String text, bool positive) {
     for (int i = 0; i < maxLen; i++) {
       if (i < positives.length) {
         result.add(
-          _RecommendationItemData(
-            text: positives[i],
-            isPositive: true,
-          ),
+          _RecommendationItemData(text: positives[i], isPositive: true),
         );
       }
 
       if (i < negatives.length) {
         result.add(
-          _RecommendationItemData(
-            text: negatives[i],
-            isPositive: false,
-          ),
+          _RecommendationItemData(text: negatives[i], isPositive: false),
         );
       }
     }
@@ -985,10 +997,7 @@ String _recommendationEmoji(String text, bool positive) {
               opacity: (1 - value).clamp(0.0, 1.0),
               child: Transform.scale(
                 scale: 0.8 + (value * 0.5),
-                child: Text(
-                  item.emoji,
-                  style: TextStyle(fontSize: item.size),
-                ),
+                child: Text(item.emoji, style: TextStyle(fontSize: item.size)),
               ),
             ),
           );
@@ -997,9 +1006,7 @@ String _recommendationEmoji(String text, bool positive) {
     }).toList();
   }
 
-  List<Widget> _buildRecommendationOrbit({
-    required double centerYOffset,
-  }) {
+  List<Widget> _buildRecommendationOrbit({required double centerYOffset}) {
     final items = _buildAlternatingRecommendations();
     if (items.isEmpty) return const [];
 
@@ -1021,10 +1028,7 @@ String _recommendationEmoji(String text, bool positive) {
       final key = '${item.isPositive ? 'p' : 'n'}_${index}_${item.text}';
 
       return Transform.translate(
-        offset: Offset(
-          baseDx + drift.dx,
-          centerYOffset + baseDy + drift.dy,
-        ),
+        offset: Offset(baseDx + drift.dx, centerYOffset + baseDy + drift.dy),
         child: _RecommendationBubble(
           text: _visibleActionText(item.text),
           emoji: _recommendationEmoji(item.text, item.isPositive),
@@ -1062,10 +1066,7 @@ String _recommendationEmoji(String text, bool positive) {
         ),
         child: Text(
           title,
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -1148,10 +1149,12 @@ String _recommendationEmoji(String text, bool positive) {
               _primaryButton(
                 title: 'Скопировать ссылку',
                 onPressed: () async {
+                  final sheetNavigator = Navigator.of(sheetContext);
+                  final messenger = ScaffoldMessenger.of(context);
                   await Clipboard.setData(ClipboardData(text: personLink));
                   if (!mounted) return;
-                  Navigator.pop(sheetContext);
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  sheetNavigator.pop();
+                  messenger.showSnackBar(
                     const SnackBar(content: Text('Ссылка скопирована')),
                   );
                 },
@@ -1179,51 +1182,47 @@ String _recommendationEmoji(String text, bool positive) {
     }
   }
 
-Future<void> _confirmDelete() async {
-  if (widget.onPersonDeleted == null) return;
+  Future<void> _confirmDelete() async {
+    if (widget.onPersonDeleted == null) return;
 
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (dialogContext) {
-      return AlertDialog(
-        backgroundColor: AppColors.card(context),
-        title: Text(
-          'Удалить человека?',
-          style: TextStyle(
-            color: AppColors.primaryText(context),
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.card(context),
+          title: Text(
+            'Удалить человека?',
+            style: TextStyle(color: AppColors.primaryText(context)),
           ),
-        ),
-        content: Text(
-          '“${currentPerson.name}” будет удалён из твоего списка.',
-          style: TextStyle(
-            color: AppColors.secondaryText(context),
+          content: Text(
+            '“${currentPerson.name}” будет удалён из твоего списка.',
+            style: TextStyle(color: AppColors.secondaryText(context)),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Отмена'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text(
-              'Удалить',
-              style: TextStyle(color: Colors.redAccent),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Отмена'),
             ),
-          ),
-        ],
-      );
-    },
-  );
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text(
+                'Удалить',
+                style: TextStyle(color: Colors.redAccent),
+              ),
+            ),
+          ],
+        );
+      },
+    );
 
-  if (confirmed != true) return;
+    if (confirmed != true) return;
 
-  await widget.onPersonDeleted!.call();
+    await widget.onPersonDeleted!.call();
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  Navigator.of(context).popUntil((route) => route.isFirst);
-}
+    Navigator.of(context).pop();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1232,12 +1231,11 @@ Future<void> _confirmDelete() async {
     final backgroundColor = AppColors.background(context);
     final primaryText = AppColors.primaryText(context);
     final secondaryText = AppColors.secondaryText(context);
-    final iconColor = AppColors.secondaryText(context);
     final accent = AppColors.accent(context);
 
-WidgetsBinding.instance.addPostFrameCallback((_) {
-  _scrollCycleDaysToActive();
-});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollCycleDaysToActive();
+    });
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -1247,10 +1245,7 @@ WidgetsBinding.instance.addPostFrameCallback((_) {
         elevation: 0,
         title: Text(
           currentPerson.name,
-          style: TextStyle(
-            color: primaryText,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: primaryText, fontWeight: FontWeight.w600),
         ),
         actions: const [],
       ),
@@ -1336,10 +1331,7 @@ WidgetsBinding.instance.addPostFrameCallback((_) {
                         ? 'Мой настрой'
                         : _moodTitle(currentPerson.mood),
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: secondaryText,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: secondaryText, fontSize: 16),
                   ),
                   const SizedBox(height: 8),
                   Padding(
@@ -1370,20 +1362,14 @@ class _RecommendationItemData {
   final String text;
   final bool isPositive;
 
-  const _RecommendationItemData({
-    required this.text,
-    required this.isPositive,
-  });
+  const _RecommendationItemData({required this.text, required this.isPositive});
 }
 
 class _ParsedEmojiAction {
   final String emoji;
   final String text;
 
-  const _ParsedEmojiAction({
-    required this.emoji,
-    required this.text,
-  });
+  const _ParsedEmojiAction({required this.emoji, required this.text});
 }
 
 class _RecommendationBubble extends StatelessWidget {
@@ -1403,8 +1389,9 @@ class _RecommendationBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent =
-        isPositive ? const Color(0xFF6FCF97) : const Color(0xFFFF6B6B);
+    final accent = isPositive
+        ? const Color(0xFF6FCF97)
+        : const Color(0xFFFF6B6B);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -1432,8 +1419,7 @@ class _RecommendationBubble extends StatelessWidget {
                       height: 66,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color:
-                            accent.withValues(alpha: isActive ? 0.24 : 0.16),
+                        color: accent.withValues(alpha: isActive ? 0.24 : 0.16),
                         boxShadow: [
                           BoxShadow(
                             color: accent.withValues(
@@ -1446,10 +1432,7 @@ class _RecommendationBubble extends StatelessWidget {
                       ),
                     ),
                   ),
-                  Text(
-                    emoji,
-                    style: const TextStyle(fontSize: 36),
-                  ),
+                  Text(emoji, style: const TextStyle(fontSize: 36)),
                 ],
               ),
             ),
@@ -1473,4 +1456,3 @@ class _RecommendationBubble extends StatelessWidget {
     );
   }
 }
-

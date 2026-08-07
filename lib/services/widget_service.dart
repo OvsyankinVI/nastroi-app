@@ -11,7 +11,14 @@ class WidgetService {
   static Future<void> updatePeople(List<Person> people) async {
     await HomeWidget.setAppGroupId(appGroupId);
 
-    final friends = people.where((p) => p.id != 'me').toList();
+    final friends = people
+        .where(
+          (p) =>
+              p.id != 'me' &&
+              p.sourceType != SourceType.friendRequestIncoming &&
+              p.sourceType != SourceType.friendRequestPending,
+        )
+        .toList();
 
     final data = friends.map((person) {
       String? activeStage;
@@ -32,20 +39,13 @@ class WidgetService {
       };
     }).toList();
 
-    await HomeWidget.saveWidgetData(
-      peopleKey,
-      jsonEncode(data),
-    );
+    await HomeWidget.saveWidgetData(peopleKey, jsonEncode(data));
 
-    await HomeWidget.updateWidget(
-      iOSName: 'NastroiWidget',
-    );
+    await HomeWidget.updateWidget(iOSName: 'NastroiWidget');
   }
 
   static String? _getActiveStage(Person person) {
-    final start = DateTime.tryParse(
-      person.cycleStartDateIso ?? '',
-    );
+    final start = DateTime.tryParse(person.cycleStartDateIso ?? '');
 
     if (start == null) return null;
 
@@ -66,9 +66,7 @@ class WidgetService {
       passed += stage.durationDays;
 
       if (currentDay <= passed) {
-        return stage.title.isNotEmpty
-            ? stage.title
-            : stage.mood.name;
+        return stage.title.isNotEmpty ? stage.title : stage.mood.name;
       }
     }
 

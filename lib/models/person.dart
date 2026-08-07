@@ -1,35 +1,12 @@
 import 'dart:convert';
 
-enum MoodType {
-  calm,
-  happy,
-  sad,
-  irritated,
-  tired,
-  needsCare,
-}
+enum MoodType { calm, happy, sad, irritated, tired, needsCare }
 
-enum RelationType {
-  me,
-  partner,
-  friend,
-  parent,
-  child,
-  colleague,
-  other,
-}
+enum RelationType { me, partner, friend, parent, child, colleague, other }
 
-enum SourceType {
-  local,
-  imported,
-  friendRequestIncoming,
-  friendRequestPending,
-}
+enum SourceType { local, imported, friendRequestIncoming, friendRequestPending }
 
-enum GenderType {
-  male,
-  female,
-}
+enum GenderType { male, female }
 
 const Object _personFieldNotSet = Object();
 
@@ -173,8 +150,8 @@ class Person {
           : manualMoodOverride as MoodType?,
       manualMoodOverrideDateIso:
           identical(manualMoodOverrideDateIso, _personFieldNotSet)
-              ? this.manualMoodOverrideDateIso
-              : manualMoodOverrideDateIso as String?,
+          ? this.manualMoodOverrideDateIso
+          : manualMoodOverrideDateIso as String?,
     );
   }
 
@@ -255,11 +232,8 @@ class Person {
 
     if (manualMoodOverride != null && manualMoodOverrideDateIso != null) {
       final overrideDate = DateTime.tryParse(manualMoodOverrideDateIso!);
-      if (overrideDate != null &&
-          _dateOnly(overrideDate) == _dateOnly(date)) {
-        updated = updated.copyWith(
-          mood: manualMoodOverride,
-        );
+      if (overrideDate != null && _dateOnly(overrideDate) == _dateOnly(date)) {
+        updated = updated.copyWith(mood: manualMoodOverride);
       }
     }
 
@@ -307,7 +281,8 @@ class Person {
       isPinned: map['isPinned'] ?? false,
       relationType: RelationType.values.firstWhere(
         (r) => r.name == map['relationType'],
-        orElse: () => (map['id'] == 'me' ? RelationType.me : RelationType.other),
+        orElse: () =>
+            (map['id'] == 'me' ? RelationType.me : RelationType.other),
       ),
       sourceType: SourceType.values.firstWhere(
         (s) => s.name == map['sourceType'],
