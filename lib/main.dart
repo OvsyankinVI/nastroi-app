@@ -3,7 +3,9 @@ import 'dart:ui';
 
 import 'package:app_links/app_links.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -12,8 +14,11 @@ import 'data/people_repository.dart';
 import 'firebase_options.dart';
 import 'screens/link_person_preview_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/chat_list_screen.dart';
+import 'screens/chat_screen.dart';
 import 'screens/person_screen.dart';
 import 'services/notification_service.dart';
+import 'services/push_service.dart';
 import 'supabase_config.dart';
 import 'utils/deep_link_guard.dart';
 import 'utils/person_link.dart';
@@ -35,10 +40,27 @@ Future<void> main() async {
   );
   try {
     await NotificationService.initialize().timeout(const Duration(seconds: 8));
+    await PushService.initialize(
+      onOpen: _routeChatPush,
+      isChatOpen: (threadId) => activeChatThreadId.value == threadId,
+      showForeground: (message) => NotificationService.showChatNotification(
+        title: message.notification?.title ?? 'Новое сообщение',
+        body: message.notification?.body ?? 'Открой «Настрой», чтобы прочитать',
+      ),
+    );
   } catch (error, stack) {
     unawaited(FirebaseCrashlytics.instance.recordError(error, stack));
   }
   runApp(const NastroiApp());
+}
+
+void _routeChatPush(RemoteMessage message) {
+  if (message.data['type'] != 'chat_message') return;
+  final threadId = message.data['thread_id']?.toString();
+  if (threadId == null) return;
+  homeTabIndex.value = 1;
+  pendingChatThreadId.value = threadId;
+  unawaited(FirebaseAnalytics.instance.logEvent(name: 'chat_push_opened'));
 }
 
 class NastroiApp extends StatefulWidget {

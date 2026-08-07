@@ -9,6 +9,7 @@ import '../app_colors.dart';
 import '../app_theme_controller.dart';
 import '../data/people_repository.dart';
 import '../models/person.dart';
+import '../models/chat.dart';
 import '../widgets/person_avatar.dart';
 
 import 'about_screen.dart';
@@ -31,8 +32,11 @@ import '../services/remote_friend_requests_service.dart';
 import '../services/realtime_people_service.dart';
 import '../services/auth_service.dart';
 import '../utils/person_link.dart';
+import '../widgets/glass_tab_bar.dart';
 
 import 'dart:async';
+import 'chat_list_screen.dart';
+import 'chat_screen.dart';
 
 final ValueNotifier<int> homeTabIndex = ValueNotifier<int>(0);
 
@@ -782,6 +786,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _startChat(Person friend) async {
+    if (friend.sourceType != SourceType.imported) return;
+    unawaited(FirebaseAnalytics.instance.logEvent(name: 'chat_started'));
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ChatScreen(friend: friend)),
+    );
+  }
+
   Future<void> _openQuickMoodPicker() async {
     final me = _me();
     if (me == null) return;
@@ -1027,6 +1040,9 @@ class _HomeScreenState extends State<HomeScreen> {
               isMyProfile: false,
               onPersonDeleted: () => _deletePerson(person.id),
               onTogglePin: null,
+              onStartChat: person.sourceType == SourceType.imported
+                  ? () => _startChat(person)
+                  : null,
             ),
           ),
         );
@@ -1195,7 +1211,11 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         centerTitle: false,
         title: Text(
-          _selectedTab == 0 ? 'Люди' : 'Профиль',
+          switch (_selectedTab) {
+            0 => 'Люди',
+            1 => 'Чаты',
+            _ => 'Профиль',
+          },
           style: TextStyle(
             color: AppColors.primaryText(context),
             fontSize: 28,
@@ -1212,7 +1232,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: AppColors.primaryText(context),
               ),
             ),
-          if (_selectedTab == 1)
+          if (_selectedTab == 2)
             IconButton(
               tooltip: 'Сменить тему',
               onPressed: () =>
@@ -1230,32 +1250,33 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: IndexedStack(
         index: _selectedTab,
-        children: [peopleTab, _buildProfileTab()],
-      ),
-      bottomNavigationBar: CupertinoTabBar(
-        currentIndex: _selectedTab,
-        backgroundColor: AppColors.surface(context).withValues(alpha: 0.9),
-        activeColor: Theme.of(context).colorScheme.primary,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.person_2_fill),
-            label: 'Люди',
+        children: [
+          peopleTab,
+          ChatListScreen(
+            initialFriends: people.where(isRemoteChatFriend).toList(),
+            onOpenPeople: () => homeTabIndex.value = 0,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(CupertinoIcons.person_crop_circle_fill),
-            label: 'Профиль',
-          ),
+          _buildProfileTab(),
         ],
-        onTap: (index) {
-          if (index == _selectedTab) return;
-          setState(() => _selectedTab = index);
-          homeTabIndex.value = index;
-          unawaited(
-            FirebaseAnalytics.instance.logEvent(
-              name: index == 0 ? 'people_tab_opened' : 'profile_tab_opened',
-            ),
-          );
-        },
+      ),
+      extendBody: true,
+      bottomNavigationBar: ValueListenableBuilder<int>(
+        valueListenable: totalChatUnread,
+        builder: (_, unread, _) => GlassTabBar(
+          index: _selectedTab,
+          unread: unread,
+          onChanged: (index) {
+            if (index == _selectedTab) return;
+            setState(() => _selectedTab = index);
+            homeTabIndex.value = index;
+            final event = switch (index) {
+              0 => 'people_tab_opened',
+              1 => 'chats_tab_opened',
+              _ => 'profile_tab_opened',
+            };
+            unawaited(FirebaseAnalytics.instance.logEvent(name: event));
+          },
+        ),
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'push_service.dart';
 
 class AuthService {
   static final SupabaseClient _client = Supabase.instance.client;
@@ -25,6 +26,7 @@ class AuthService {
         'email': email.trim(),
         'display_name': '',
       });
+      await PushService.registerCurrentToken().catchError((_) {});
     }
   }
 
@@ -36,9 +38,11 @@ class AuthService {
       email: email.trim(),
       password: password,
     );
+    await PushService.registerCurrentToken().catchError((_) {});
   }
 
   static Future<void> signOut() async {
+    await PushService.removeCurrentToken().catchError((_) {});
     await _client.auth.signOut();
   }
 }

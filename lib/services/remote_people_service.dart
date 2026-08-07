@@ -35,6 +35,7 @@ class RemotePeopleService {
     return Person.fromMap({
       'id': id,
       'publicId': data['public_id'],
+      'remoteUserId': data['owner_user_id'],
       'name': data['name'],
       'gender': data['gender'],
       'avatarVariant': data['avatar_variant'],

@@ -29,6 +29,7 @@ class PersonScreen extends StatefulWidget {
   final Future<void> Function(RemoteFriendRequest request)? onAcceptRequest;
   final Future<void> Function(RemoteFriendRequest request)? onDeclineRequest;
   final Future<void> Function(RemoteFriendRequest request)? onCancelRequest;
+  final Future<void> Function()? onStartChat;
 
   const PersonScreen({
     super.key,
@@ -42,6 +43,7 @@ class PersonScreen extends StatefulWidget {
     this.onAcceptRequest,
     this.onDeclineRequest,
     this.onCancelRequest,
+    this.onStartChat,
   });
 
   @override
@@ -73,8 +75,6 @@ class _PersonScreenState extends State<PersonScreen>
   double _reactionRotation = 0.0;
   double _reactionVerticalOffset = 0.0;
   double _shakeX = 0.0;
-
-  bool isFabMenuOpen = false;
 
   bool get _isFriendRequest =>
       currentPerson.sourceType == SourceType.friendRequestIncoming ||
@@ -189,170 +189,20 @@ class _PersonScreenState extends State<PersonScreen>
     );
   }
 
-  void _toggleFabMenu() {
-    setState(() {
-      isFabMenuOpen = !isFabMenuOpen;
-    });
-  }
-
-  void _closeFabMenu() {
-    if (!isFabMenuOpen) return;
-    setState(() => isFabMenuOpen = false);
-  }
-
-  Widget _buildMiniActionButton({
-    required IconData icon,
-    required VoidCallback onTap,
-    required String heroTag,
-    Color? iconColor,
-  }) {
-    return SizedBox(
-      width: 56,
-      height: 56,
-      child: FloatingActionButton(
-        heroTag: heroTag,
-        mini: true,
-        backgroundColor: AppColors.surface(context),
-        elevation: 0,
-        onPressed: onTap,
-        child: Icon(icon, color: iconColor ?? AppColors.primaryText(context)),
-      ),
-    );
-  }
-
-  // ignore: unused_element
-  Widget _buildLegacyFabMenu() {
-    final actions = <Widget>[];
-
-    if (!_isFriendRequest && widget.isEditable) {
-      actions.add(
-        _buildMiniActionButton(
-          heroTag: 'person_edit_action',
-          icon: Icons.edit_outlined,
-          onTap: () {
-            _closeFabMenu();
-            _openEditScreen();
-          },
-        ),
-      );
-    }
-
-    if (!_isFriendRequest) {
-      actions.add(
-        _buildMiniActionButton(
-          heroTag: 'person_share_action',
-          icon: Icons.share_outlined,
-          onTap: () {
-            _closeFabMenu();
-            _showShareDialog();
-          },
-        ),
-      );
-    }
-
-    if (_isPendingRequest) {
-      actions.add(
-        _buildMiniActionButton(
-          heroTag: 'person_cancel_request_action',
-          icon: Icons.delete_outline,
-          iconColor: Colors.redAccent,
-          onTap: () {
-            _closeFabMenu();
-            _cancelPendingRequest();
-          },
-        ),
-      );
-    }
-
-    if (!_isFriendRequest && widget.onPersonDeleted != null) {
-      actions.add(
-        _buildMiniActionButton(
-          heroTag: 'person_delete_action',
-          icon: Icons.delete_outline,
-          iconColor: Colors.redAccent,
-          onTap: () {
-            _closeFabMenu();
-            _confirmDelete();
-          },
-        ),
-      );
-    }
-
-    if (!_isFriendRequest && widget.isMyProfile) {
-      actions.add(
-        _buildMiniActionButton(
-          heroTag: 'person_logout_action',
-          icon: Icons.logout_rounded,
-          iconColor: Colors.redAccent,
-          onTap: () {
-            _closeFabMenu();
-            _confirmLogout();
-          },
-        ),
-      );
-    }
-
-    if (actions.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return SizedBox(
-      width: 72,
-      height: 72 + (actions.length * 64),
-      child: Stack(
-        alignment: Alignment.bottomRight,
-        children: [
-          for (int i = 0; i < actions.length; i++)
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOut,
-              right: 0,
-              bottom: isFabMenuOpen ? 72.0 + (i * 64.0) : 0,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 140),
-                opacity: isFabMenuOpen ? 1 : 0,
-                child: IgnorePointer(
-                  ignoring: !isFabMenuOpen,
-                  child: actions[i],
-                ),
-              ),
-            ),
-          FloatingActionButton(
-            heroTag: 'person_main_actions',
-            backgroundColor: AppColors.chip(context),
-            elevation: 0,
-            onPressed: _toggleFabMenu,
-            child: Icon(
-              Icons.more_horiz_rounded,
-              color: AppColors.primaryText(context),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFabMenu() {
-    if (_isFriendRequest && !_isPendingRequest) return const SizedBox.shrink();
-    return FloatingActionButton.small(
-      heroTag: 'person_main_actions',
-      backgroundColor: AppColors.chip(context),
-      elevation: 0,
-      tooltip: 'Действия',
-      onPressed: _showPersonActions,
-      child: Icon(
-        CupertinoIcons.ellipsis,
-        color: AppColors.primaryText(context),
-      ),
-    );
-  }
-
   Future<void> _showPersonActions() async {
     await showCupertinoModalPopup<void>(
       context: context,
       builder: (sheetContext) => CupertinoActionSheet(
         title: Text(currentPerson.name),
         actions: [
+          if (widget.onStartChat != null)
+            CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                widget.onStartChat!();
+              },
+              child: const Text('Написать'),
+            ),
           if (!_isFriendRequest && widget.isEditable)
             CupertinoActionSheetAction(
               onPressed: () {
@@ -386,6 +236,15 @@ class _PersonScreenState extends State<PersonScreen>
                 _confirmDelete();
               },
               child: const Text('Удалить'),
+            ),
+          if (!_isFriendRequest && widget.isMyProfile)
+            CupertinoActionSheetAction(
+              isDestructiveAction: true,
+              onPressed: () {
+                Navigator.pop(sheetContext);
+                _confirmLogout();
+              },
+              child: const Text('Выйти из аккаунта'),
             ),
         ],
         cancelButton: CupertinoActionSheetAction(
@@ -1239,7 +1098,6 @@ class _PersonScreenState extends State<PersonScreen>
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      floatingActionButton: _buildFabMenu(),
       appBar: AppBar(
         backgroundColor: backgroundColor,
         elevation: 0,
@@ -1247,7 +1105,18 @@ class _PersonScreenState extends State<PersonScreen>
           currentPerson.name,
           style: TextStyle(color: primaryText, fontWeight: FontWeight.w600),
         ),
-        actions: const [],
+        actions: [
+          if (!_isFriendRequest || _isPendingRequest)
+            SizedBox(
+              width: 52,
+              height: 52,
+              child: IconButton(
+                tooltip: 'Действия',
+                onPressed: _showPersonActions,
+                icon: Icon(CupertinoIcons.ellipsis, color: primaryText),
+              ),
+            ),
+        ],
       ),
       body: AnimatedBuilder(
         animation: Listenable.merge([_floatController, _shakeController]),

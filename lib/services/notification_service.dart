@@ -45,6 +45,25 @@ class NotificationService {
     await init();
   }
 
+  static Future<void> showChatNotification({
+    required String title,
+    required String body,
+  }) async {
+    await _plugin.show(
+      id: DateTime.now().millisecondsSinceEpoch.remainder(2147483647),
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          categoryIdentifier: 'CHAT_MESSAGE',
+        ),
+      ),
+    );
+  }
+
   static Future<void> rescheduleCycleNotifications(List<Person> people) async {
     await _plugin.cancelAll();
 

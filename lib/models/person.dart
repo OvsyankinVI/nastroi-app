@@ -68,6 +68,7 @@ class CycleStage {
 class Person {
   final String id;
   final String publicId;
+  final String? remoteUserId;
   final String name;
   final GenderType gender;
   final int avatarVariant;
@@ -89,6 +90,7 @@ class Person {
   const Person({
     required this.id,
     required this.publicId,
+    this.remoteUserId,
     required this.name,
     required this.gender,
     required this.avatarVariant,
@@ -109,6 +111,7 @@ class Person {
   Person copyWith({
     String? id,
     String? publicId,
+    Object? remoteUserId = _personFieldNotSet,
     String? name,
     GenderType? gender,
     int? avatarVariant,
@@ -128,6 +131,9 @@ class Person {
     return Person(
       id: id ?? this.id,
       publicId: publicId ?? this.publicId,
+      remoteUserId: identical(remoteUserId, _personFieldNotSet)
+          ? this.remoteUserId
+          : remoteUserId as String?,
       name: name ?? this.name,
       gender: gender ?? this.gender,
       avatarVariant: avatarVariant ?? this.avatarVariant,
@@ -244,6 +250,7 @@ class Person {
     return {
       'id': id,
       'publicId': publicId,
+      'remoteUserId': remoteUserId,
       'name': name,
       'gender': gender.name,
       'avatarVariant': avatarVariant,
@@ -266,6 +273,7 @@ class Person {
     return Person(
       id: map['id'] ?? '',
       publicId: map['publicId'] ?? map['id'] ?? '',
+      remoteUserId: map['remoteUserId'],
       name: map['name'] ?? '',
       gender: GenderType.values.firstWhere(
         (g) => g.name == map['gender'],
